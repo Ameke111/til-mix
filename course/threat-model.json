@@ -1,0 +1,413 @@
+{
+  "version": "2.0",
+  "summary": {
+    "title": "Тіл Mix · Аккаунт и прогресс",
+    "owner": "Ameke111",
+    "description": "STRIDE для учебного Node.js и SQLite. Публичный Pages не имеет API. Анализ 15.11.2026.",
+    "id": 0
+  },
+  "detail": {
+    "reviewer": "Самопроверка. Внешний ревьюер ещё не назначен.",
+    "contributors": [
+      {
+        "name": "Ameke111"
+      }
+    ],
+    "diagramTop": 1,
+    "threatTop": 21,
+    "diagrams": [
+      {
+        "id": 0,
+        "title": "Сессия, прогресс и обращения",
+        "diagramType": "STRIDE",
+        "version": "2.0",
+        "thumbnail": "",
+        "cells": [
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000001",
+            "shape": "actor",
+            "position": {
+              "x": 60,
+              "y": 140
+            },
+            "size": {
+              "width": 165,
+              "height": 85
+            },
+            "zIndex": 3,
+            "attrs": {
+              "text": {
+                "text": "Клиент\nбраузер"
+              },
+              "body": {
+                "stroke": "#3a6249",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "data": {
+              "name": "Клиент\nбраузер",
+              "description": "Компонент Тіл Mix",
+              "type": "tm.Actor",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "threats": [],
+              "hasOpenThreats": false
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000002",
+            "shape": "process",
+            "position": {
+              "x": 365,
+              "y": 115
+            },
+            "size": {
+              "width": 135,
+              "height": 135
+            },
+            "zIndex": 3,
+            "attrs": {
+              "text": {
+                "text": "Node.js\nAPI"
+              },
+              "body": {
+                "stroke": "#aa4a37",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "data": {
+              "name": "Node.js\nAPI",
+              "description": "Компонент Тіл Mix",
+              "type": "tm.Process",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "threats": [
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000010",
+                  "title": "Подмена сессии",
+                  "type": "Spoofing",
+                  "severity": "High",
+                  "description": "Действие может быть приписано чужому аккаунту.",
+                  "mitigation": "Токен из 32 случайных байт, дайджест в SQLite, HttpOnly и отзыв на выходе.",
+                  "status": "Mitigated",
+                  "modelType": "STRIDE"
+                },
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000011",
+                  "title": "Неподтверждённое изменение",
+                  "type": "Repudiation",
+                  "severity": "Medium",
+                  "description": "Журнал не позволяет восстановить важные контекстные события.",
+                  "mitigation": "Добавить журнал событий входа и удаления без содержимого формы.",
+                  "status": "Open",
+                  "modelType": "STRIDE"
+                },
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000012",
+                  "title": "Перегрузка формы входа",
+                  "type": "Denial of service",
+                  "severity": "High",
+                  "description": "Дорогие вычисления повышают задержку ответов.",
+                  "mitigation": "Лимиты по IP и логину, две параллельные операции scrypt, короткий тайм-аут. Провести замер на собственном стенде.",
+                  "status": "Open",
+                  "modelType": "STRIDE"
+                },
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000013",
+                  "title": "Права на чужую запись",
+                  "type": "Elevation of privilege",
+                  "severity": "High",
+                  "description": "Обработчик может использовать чужой идентификатор ресурса.",
+                  "mitigation": "Владелец всех защищённых записей определяется из серверной сессии. Регрессионный тест двух аккаунтов.",
+                  "status": "Mitigated",
+                  "modelType": "STRIDE"
+                }
+              ],
+              "hasOpenThreats": true
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000003",
+            "shape": "store",
+            "position": {
+              "x": 630,
+              "y": 130
+            },
+            "size": {
+              "width": 220,
+              "height": 100
+            },
+            "zIndex": 3,
+            "attrs": {
+              "text": {
+                "text": "SQLite\nаккаунты, прогресс,\nобращения"
+              },
+              "topLine": {
+                "stroke": "#aa4a37",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              },
+              "bottomLine": {
+                "stroke": "#aa4a37",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "data": {
+              "name": "SQLite\nаккаунты, прогресс,\nобращения",
+              "description": "Компонент Тіл Mix",
+              "type": "tm.Store",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "threats": [
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000014",
+                  "title": "Утечка файла SQLite",
+                  "type": "Information disclosure",
+                  "severity": "High",
+                  "description": "Локальный пользователь или оператор получает копию базы.",
+                  "mitigation": "Хранить вне dist, ограничить права доступа, зашифровать резервные копии, подтвердить регион хранения.",
+                  "status": "Open",
+                  "modelType": "STRIDE"
+                },
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000015",
+                  "title": "Перезапись прогресса",
+                  "type": "Tampering",
+                  "severity": "Medium",
+                  "description": "Несовпадающие версии двух вкладок приводят к конфликту.",
+                  "mitigation": "Ревизия записи, атомарное сравнение, HTTP 409 и управляемое объединение.",
+                  "status": "Mitigated",
+                  "modelType": "STRIDE"
+                }
+              ],
+              "hasOpenThreats": true
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000004",
+            "shape": "store",
+            "position": {
+              "x": 630,
+              "y": 310
+            },
+            "size": {
+              "width": 220,
+              "height": 90
+            },
+            "zIndex": 3,
+            "attrs": {
+              "text": {
+                "text": "Резервная копия\nоператор, план"
+              },
+              "topLine": {
+                "stroke": "#aa4a37",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              },
+              "bottomLine": {
+                "stroke": "#aa4a37",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "data": {
+              "name": "Резервная копия\nоператор, план",
+              "description": "Компонент Тіл Mix",
+              "type": "tm.Store",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "threats": [
+                {
+                  "id": "bb835a3b-b80b-4031-a870-000000000016",
+                  "title": "Нечитаемая резервная копия",
+                  "type": "Denial of service",
+                  "severity": "High",
+                  "description": "Потеря хоста останавливает доступ к прогрессу.",
+                  "mitigation": "Проверить восстановление в отдельной папке по RPO 24 ч, RTO 60 мин.",
+                  "status": "Open",
+                  "modelType": "STRIDE"
+                }
+              ],
+              "hasOpenThreats": true
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000017",
+            "shape": "flow",
+            "zIndex": 2,
+            "source": {
+              "cell": "bb835a3b-b80b-4031-a870-000000000001"
+            },
+            "target": {
+              "cell": "bb835a3b-b80b-4031-a870-000000000002"
+            },
+            "attrs": {
+              "line": {
+                "stroke": "#3a6249",
+                "strokeWidth": 1.5,
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "Формы и cookie"
+                  }
+                }
+              }
+            ],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Формы и cookie",
+              "description": "Релиз Тіл Mix",
+              "protocol": "HTTP loopback / HTTPS pilot",
+              "isPublicNetwork": true,
+              "isEncrypted": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "isTrustBoundary": false,
+              "threats": []
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000018",
+            "shape": "flow",
+            "zIndex": 2,
+            "source": {
+              "cell": "bb835a3b-b80b-4031-a870-000000000002"
+            },
+            "target": {
+              "cell": "bb835a3b-b80b-4031-a870-000000000003"
+            },
+            "attrs": {
+              "line": {
+                "stroke": "#3a6249",
+                "strokeWidth": 1.5,
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "Данные владельца"
+                  }
+                }
+              }
+            ],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Данные владельца",
+              "description": "Релиз Тіл Mix",
+              "protocol": "SQLite",
+              "isPublicNetwork": false,
+              "isEncrypted": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "isTrustBoundary": false,
+              "threats": []
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000019",
+            "shape": "flow",
+            "zIndex": 2,
+            "source": {
+              "cell": "bb835a3b-b80b-4031-a870-000000000003"
+            },
+            "target": {
+              "cell": "bb835a3b-b80b-4031-a870-000000000004"
+            },
+            "attrs": {
+              "line": {
+                "stroke": "#3a6249",
+                "strokeWidth": 1.5,
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "Резервирование (план)"
+                  }
+                }
+              }
+            ],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Резервирование (план)",
+              "description": "Релиз Тіл Mix",
+              "protocol": "Копия файла SQLite",
+              "isPublicNetwork": false,
+              "isEncrypted": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "isTrustBoundary": false,
+              "threats": []
+            }
+          },
+          {
+            "id": "bb835a3b-b80b-4031-a870-000000000020",
+            "shape": "trust-boundary-curve",
+            "zIndex": 1,
+            "source": {
+              "x": 295,
+              "y": 75
+            },
+            "target": {
+              "x": 295,
+              "y": 420
+            },
+            "vertices": [
+              {
+                "x": 272,
+                "y": 247
+              }
+            ],
+            "attrs": {
+              "line": {
+                "sourceMarker": "",
+                "targetMarker": "",
+                "strokeDasharray": "5 5"
+              }
+            },
+            "data": {
+              "type": "tm.Boundary",
+              "name": "Граница клиент / сервер",
+              "description": "Проверка Origin и сессии",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false
+            },
+            "labels": [
+              {
+                "attrs": {
+                  "text": {
+                    "text": "Граница доверия"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
