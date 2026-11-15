@@ -1,0 +1,850 @@
+{
+  "repository": "excalidraw/excalidraw",
+  "from_inclusive": "2026-08-03",
+  "to_exclusive": "2026-11-09",
+  "retrieved_on": "2026-11-15",
+  "source": "https://api.github.com/repos/excalidraw/excalidraw/issues?state=closed&since=2026-08-03T00:00:00Z&sort=updated&direction=desc&per_page=100",
+  "filter": "closed_at in UTC window; issue only; state_reason=completed",
+  "observed_closure_reasons": {
+    "completed": 167,
+    "not_planned": 70,
+    "duplicate": 5
+  },
+  "issues": [
+    {
+      "issue": 11800,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11800",
+      "closed_at": "2026-08-04T14:31:38Z"
+    },
+    {
+      "issue": 11817,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11817",
+      "closed_at": "2026-08-04T21:40:29Z"
+    },
+    {
+      "issue": 10867,
+      "url": "https://github.com/excalidraw/excalidraw/issues/10867",
+      "closed_at": "2026-08-08T21:17:28Z"
+    },
+    {
+      "issue": 11809,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11809",
+      "closed_at": "2026-08-10T11:09:45Z"
+    },
+    {
+      "issue": 11892,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11892",
+      "closed_at": "2026-08-16T06:14:52Z"
+    },
+    {
+      "issue": 11876,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11876",
+      "closed_at": "2026-08-16T13:20:17Z"
+    },
+    {
+      "issue": 11256,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11256",
+      "closed_at": "2026-08-24T09:58:54Z"
+    },
+    {
+      "issue": 9541,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9541",
+      "closed_at": "2026-09-01T18:44:52Z"
+    },
+    {
+      "issue": 9338,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9338",
+      "closed_at": "2026-09-03T15:21:14Z"
+    },
+    {
+      "issue": 10373,
+      "url": "https://github.com/excalidraw/excalidraw/issues/10373",
+      "closed_at": "2026-09-06T18:59:12Z"
+    },
+    {
+      "issue": 10122,
+      "url": "https://github.com/excalidraw/excalidraw/issues/10122",
+      "closed_at": "2026-09-06T18:59:40Z"
+    },
+    {
+      "issue": 5312,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5312",
+      "closed_at": "2026-09-06T19:00:06Z"
+    },
+    {
+      "issue": 7332,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7332",
+      "closed_at": "2026-09-07T09:52:24Z"
+    },
+    {
+      "issue": 6876,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6876",
+      "closed_at": "2026-09-07T09:52:24Z"
+    },
+    {
+      "issue": 2346,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2346",
+      "closed_at": "2026-09-07T09:52:24Z"
+    },
+    {
+      "issue": 9696,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9696",
+      "closed_at": "2026-09-10T14:45:39Z"
+    },
+    {
+      "issue": 5755,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5755",
+      "closed_at": "2026-09-18T11:08:05Z"
+    },
+    {
+      "issue": 7667,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7667",
+      "closed_at": "2026-09-23T06:31:22Z"
+    },
+    {
+      "issue": 10374,
+      "url": "https://github.com/excalidraw/excalidraw/issues/10374",
+      "closed_at": "2026-09-23T19:35:37Z"
+    },
+    {
+      "issue": 7421,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7421",
+      "closed_at": "2026-09-24T22:43:01Z"
+    },
+    {
+      "issue": 11769,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11769",
+      "closed_at": "2026-09-26T13:46:56Z"
+    },
+    {
+      "issue": 9819,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9819",
+      "closed_at": "2026-09-26T14:22:58Z"
+    },
+    {
+      "issue": 9423,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9423",
+      "closed_at": "2026-09-26T14:28:20Z"
+    },
+    {
+      "issue": 9281,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9281",
+      "closed_at": "2026-09-26T14:46:34Z"
+    },
+    {
+      "issue": 8687,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8687",
+      "closed_at": "2026-09-26T15:21:09Z"
+    },
+    {
+      "issue": 8672,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8672",
+      "closed_at": "2026-09-26T15:21:57Z"
+    },
+    {
+      "issue": 8561,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8561",
+      "closed_at": "2026-09-26T16:47:18Z"
+    },
+    {
+      "issue": 8510,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8510",
+      "closed_at": "2026-09-26T16:53:14Z"
+    },
+    {
+      "issue": 8503,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8503",
+      "closed_at": "2026-09-26T17:12:21Z"
+    },
+    {
+      "issue": 8472,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8472",
+      "closed_at": "2026-09-26T17:27:34Z"
+    },
+    {
+      "issue": 8470,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8470",
+      "closed_at": "2026-09-26T17:27:36Z"
+    },
+    {
+      "issue": 8427,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8427",
+      "closed_at": "2026-09-26T17:27:38Z"
+    },
+    {
+      "issue": 8415,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8415",
+      "closed_at": "2026-09-26T17:27:41Z"
+    },
+    {
+      "issue": 8404,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8404",
+      "closed_at": "2026-09-26T17:44:48Z"
+    },
+    {
+      "issue": 8401,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8401",
+      "closed_at": "2026-09-26T17:46:39Z"
+    },
+    {
+      "issue": 8243,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8243",
+      "closed_at": "2026-09-26T17:46:39Z"
+    },
+    {
+      "issue": 8339,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8339",
+      "closed_at": "2026-09-26T17:46:45Z"
+    },
+    {
+      "issue": 8246,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8246",
+      "closed_at": "2026-09-26T17:46:47Z"
+    },
+    {
+      "issue": 8209,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8209",
+      "closed_at": "2026-09-26T17:47:11Z"
+    },
+    {
+      "issue": 8151,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8151",
+      "closed_at": "2026-09-26T17:47:58Z"
+    },
+    {
+      "issue": 8117,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8117",
+      "closed_at": "2026-09-26T17:52:57Z"
+    },
+    {
+      "issue": 8081,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8081",
+      "closed_at": "2026-09-26T17:53:01Z"
+    },
+    {
+      "issue": 8070,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8070",
+      "closed_at": "2026-09-26T17:53:29Z"
+    },
+    {
+      "issue": 8034,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8034",
+      "closed_at": "2026-09-26T17:53:32Z"
+    },
+    {
+      "issue": 7937,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7937",
+      "closed_at": "2026-09-26T18:05:31Z"
+    },
+    {
+      "issue": 7895,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7895",
+      "closed_at": "2026-09-26T18:06:04Z"
+    },
+    {
+      "issue": 7834,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7834",
+      "closed_at": "2026-09-26T18:07:31Z"
+    },
+    {
+      "issue": 7793,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7793",
+      "closed_at": "2026-09-26T18:07:48Z"
+    },
+    {
+      "issue": 7769,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7769",
+      "closed_at": "2026-09-26T18:08:26Z"
+    },
+    {
+      "issue": 7768,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7768",
+      "closed_at": "2026-09-26T18:08:52Z"
+    },
+    {
+      "issue": 7704,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7704",
+      "closed_at": "2026-09-26T18:09:08Z"
+    },
+    {
+      "issue": 7694,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7694",
+      "closed_at": "2026-09-26T18:09:46Z"
+    },
+    {
+      "issue": 7677,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7677",
+      "closed_at": "2026-09-26T18:10:18Z"
+    },
+    {
+      "issue": 7513,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7513",
+      "closed_at": "2026-09-26T18:10:34Z"
+    },
+    {
+      "issue": 7455,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7455",
+      "closed_at": "2026-09-26T18:13:45Z"
+    },
+    {
+      "issue": 7439,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7439",
+      "closed_at": "2026-09-26T18:14:07Z"
+    },
+    {
+      "issue": 7376,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7376",
+      "closed_at": "2026-09-26T18:15:41Z"
+    },
+    {
+      "issue": 7371,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7371",
+      "closed_at": "2026-09-26T18:16:08Z"
+    },
+    {
+      "issue": 4463,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4463",
+      "closed_at": "2026-09-26T20:47:47Z"
+    },
+    {
+      "issue": 8936,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8936",
+      "closed_at": "2026-09-26T21:00:30Z"
+    },
+    {
+      "issue": 8855,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8855",
+      "closed_at": "2026-09-26T21:00:30Z"
+    },
+    {
+      "issue": 8119,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8119",
+      "closed_at": "2026-09-26T21:00:30Z"
+    },
+    {
+      "issue": 10189,
+      "url": "https://github.com/excalidraw/excalidraw/issues/10189",
+      "closed_at": "2026-09-26T21:00:31Z"
+    },
+    {
+      "issue": 9277,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9277",
+      "closed_at": "2026-09-26T21:00:31Z"
+    },
+    {
+      "issue": 4688,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4688",
+      "closed_at": "2026-09-26T21:00:31Z"
+    },
+    {
+      "issue": 10585,
+      "url": "https://github.com/excalidraw/excalidraw/issues/10585",
+      "closed_at": "2026-09-26T21:00:32Z"
+    },
+    {
+      "issue": 12176,
+      "url": "https://github.com/excalidraw/excalidraw/issues/12176",
+      "closed_at": "2026-09-26T22:18:03Z"
+    },
+    {
+      "issue": 5844,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5844",
+      "closed_at": "2026-09-26T22:18:04Z"
+    },
+    {
+      "issue": 2745,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2745",
+      "closed_at": "2026-09-26T22:18:04Z"
+    },
+    {
+      "issue": 11914,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11914",
+      "closed_at": "2026-09-26T22:38:05Z"
+    },
+    {
+      "issue": 7354,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7354",
+      "closed_at": "2026-09-27T09:58:19Z"
+    },
+    {
+      "issue": 7309,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7309",
+      "closed_at": "2026-09-27T09:58:28Z"
+    },
+    {
+      "issue": 7241,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7241",
+      "closed_at": "2026-09-27T09:58:57Z"
+    },
+    {
+      "issue": 7228,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7228",
+      "closed_at": "2026-09-27T10:00:23Z"
+    },
+    {
+      "issue": 7188,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7188",
+      "closed_at": "2026-09-27T10:01:15Z"
+    },
+    {
+      "issue": 7185,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7185",
+      "closed_at": "2026-09-27T10:01:28Z"
+    },
+    {
+      "issue": 7166,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7166",
+      "closed_at": "2026-09-27T10:01:43Z"
+    },
+    {
+      "issue": 7129,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7129",
+      "closed_at": "2026-09-27T10:04:29Z"
+    },
+    {
+      "issue": 7101,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7101",
+      "closed_at": "2026-09-27T10:04:44Z"
+    },
+    {
+      "issue": 7018,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7018",
+      "closed_at": "2026-09-27T10:05:02Z"
+    },
+    {
+      "issue": 6982,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6982",
+      "closed_at": "2026-09-27T10:05:18Z"
+    },
+    {
+      "issue": 6968,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6968",
+      "closed_at": "2026-09-27T10:06:11Z"
+    },
+    {
+      "issue": 6953,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6953",
+      "closed_at": "2026-09-27T10:19:53Z"
+    },
+    {
+      "issue": 6874,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6874",
+      "closed_at": "2026-09-27T10:20:04Z"
+    },
+    {
+      "issue": 6844,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6844",
+      "closed_at": "2026-09-27T10:21:04Z"
+    },
+    {
+      "issue": 6793,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6793",
+      "closed_at": "2026-09-27T10:22:12Z"
+    },
+    {
+      "issue": 6735,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6735",
+      "closed_at": "2026-09-27T10:23:04Z"
+    },
+    {
+      "issue": 6577,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6577",
+      "closed_at": "2026-09-27T10:25:24Z"
+    },
+    {
+      "issue": 6573,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6573",
+      "closed_at": "2026-09-27T10:25:46Z"
+    },
+    {
+      "issue": 6533,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6533",
+      "closed_at": "2026-09-27T10:26:01Z"
+    },
+    {
+      "issue": 6525,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6525",
+      "closed_at": "2026-09-27T10:26:11Z"
+    },
+    {
+      "issue": 6512,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6512",
+      "closed_at": "2026-09-27T10:26:29Z"
+    },
+    {
+      "issue": 6175,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6175",
+      "closed_at": "2026-09-27T10:27:31Z"
+    },
+    {
+      "issue": 6149,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6149",
+      "closed_at": "2026-09-27T10:27:46Z"
+    },
+    {
+      "issue": 6146,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6146",
+      "closed_at": "2026-09-27T10:28:55Z"
+    },
+    {
+      "issue": 6128,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6128",
+      "closed_at": "2026-09-27T10:31:39Z"
+    },
+    {
+      "issue": 6955,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6955",
+      "closed_at": "2026-09-27T10:40:16Z"
+    },
+    {
+      "issue": 6091,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6091",
+      "closed_at": "2026-09-27T10:44:29Z"
+    },
+    {
+      "issue": 6078,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6078",
+      "closed_at": "2026-09-27T10:44:58Z"
+    },
+    {
+      "issue": 6018,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6018",
+      "closed_at": "2026-09-27T10:45:50Z"
+    },
+    {
+      "issue": 6005,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6005",
+      "closed_at": "2026-09-27T10:46:12Z"
+    },
+    {
+      "issue": 5993,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5993",
+      "closed_at": "2026-09-27T10:46:16Z"
+    },
+    {
+      "issue": 5747,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5747",
+      "closed_at": "2026-09-27T10:47:37Z"
+    },
+    {
+      "issue": 5597,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5597",
+      "closed_at": "2026-09-27T10:48:07Z"
+    },
+    {
+      "issue": 5595,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5595",
+      "closed_at": "2026-09-27T10:48:19Z"
+    },
+    {
+      "issue": 5377,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5377",
+      "closed_at": "2026-09-27T10:52:10Z"
+    },
+    {
+      "issue": 5417,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5417",
+      "closed_at": "2026-09-27T10:52:11Z"
+    },
+    {
+      "issue": 5258,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5258",
+      "closed_at": "2026-09-27T10:52:41Z"
+    },
+    {
+      "issue": 5075,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5075",
+      "closed_at": "2026-09-27T10:52:50Z"
+    },
+    {
+      "issue": 5163,
+      "url": "https://github.com/excalidraw/excalidraw/issues/5163",
+      "closed_at": "2026-09-27T10:52:51Z"
+    },
+    {
+      "issue": 4808,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4808",
+      "closed_at": "2026-09-27T10:53:13Z"
+    },
+    {
+      "issue": 4540,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4540",
+      "closed_at": "2026-09-27T10:54:09Z"
+    },
+    {
+      "issue": 4531,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4531",
+      "closed_at": "2026-09-27T10:54:49Z"
+    },
+    {
+      "issue": 4504,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4504",
+      "closed_at": "2026-09-27T10:57:22Z"
+    },
+    {
+      "issue": 4448,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4448",
+      "closed_at": "2026-09-27T10:57:37Z"
+    },
+    {
+      "issue": 4422,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4422",
+      "closed_at": "2026-09-27T10:57:55Z"
+    },
+    {
+      "issue": 4336,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4336",
+      "closed_at": "2026-09-27T10:58:05Z"
+    },
+    {
+      "issue": 4326,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4326",
+      "closed_at": "2026-09-27T10:58:29Z"
+    },
+    {
+      "issue": 4010,
+      "url": "https://github.com/excalidraw/excalidraw/issues/4010",
+      "closed_at": "2026-09-27T10:58:33Z"
+    },
+    {
+      "issue": 3954,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3954",
+      "closed_at": "2026-09-27T11:01:12Z"
+    },
+    {
+      "issue": 3949,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3949",
+      "closed_at": "2026-09-27T11:01:41Z"
+    },
+    {
+      "issue": 3878,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3878",
+      "closed_at": "2026-09-27T11:01:43Z"
+    },
+    {
+      "issue": 3793,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3793",
+      "closed_at": "2026-09-27T11:03:56Z"
+    },
+    {
+      "issue": 3782,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3782",
+      "closed_at": "2026-09-27T11:05:05Z"
+    },
+    {
+      "issue": 3751,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3751",
+      "closed_at": "2026-09-27T17:33:36Z"
+    },
+    {
+      "issue": 3312,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3312",
+      "closed_at": "2026-09-27T17:33:53Z"
+    },
+    {
+      "issue": 3268,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3268",
+      "closed_at": "2026-09-27T17:34:15Z"
+    },
+    {
+      "issue": 3177,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3177",
+      "closed_at": "2026-09-27T17:34:40Z"
+    },
+    {
+      "issue": 3010,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3010",
+      "closed_at": "2026-09-27T17:40:25Z"
+    },
+    {
+      "issue": 3001,
+      "url": "https://github.com/excalidraw/excalidraw/issues/3001",
+      "closed_at": "2026-09-27T17:40:27Z"
+    },
+    {
+      "issue": 2836,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2836",
+      "closed_at": "2026-09-27T17:41:55Z"
+    },
+    {
+      "issue": 2826,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2826",
+      "closed_at": "2026-09-27T17:42:14Z"
+    },
+    {
+      "issue": 2822,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2822",
+      "closed_at": "2026-09-27T17:43:09Z"
+    },
+    {
+      "issue": 2764,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2764",
+      "closed_at": "2026-09-27T17:43:33Z"
+    },
+    {
+      "issue": 2618,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2618",
+      "closed_at": "2026-09-27T17:43:51Z"
+    },
+    {
+      "issue": 2529,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2529",
+      "closed_at": "2026-09-27T17:44:24Z"
+    },
+    {
+      "issue": 2479,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2479",
+      "closed_at": "2026-09-27T17:44:36Z"
+    },
+    {
+      "issue": 2377,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2377",
+      "closed_at": "2026-09-27T17:44:50Z"
+    },
+    {
+      "issue": 2105,
+      "url": "https://github.com/excalidraw/excalidraw/issues/2105",
+      "closed_at": "2026-09-27T17:45:56Z"
+    },
+    {
+      "issue": 1868,
+      "url": "https://github.com/excalidraw/excalidraw/issues/1868",
+      "closed_at": "2026-09-27T17:46:26Z"
+    },
+    {
+      "issue": 1010,
+      "url": "https://github.com/excalidraw/excalidraw/issues/1010",
+      "closed_at": "2026-09-27T17:47:06Z"
+    },
+    {
+      "issue": 740,
+      "url": "https://github.com/excalidraw/excalidraw/issues/740",
+      "closed_at": "2026-09-27T17:48:46Z"
+    },
+    {
+      "issue": 7379,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7379",
+      "closed_at": "2026-09-27T17:53:24Z"
+    },
+    {
+      "issue": 8657,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8657",
+      "closed_at": "2026-09-27T20:08:07Z"
+    },
+    {
+      "issue": 8754,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8754",
+      "closed_at": "2026-09-27T20:08:31Z"
+    },
+    {
+      "issue": 8572,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8572",
+      "closed_at": "2026-09-27T20:10:42Z"
+    },
+    {
+      "issue": 8118,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8118",
+      "closed_at": "2026-09-27T20:13:34Z"
+    },
+    {
+      "issue": 7907,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7907",
+      "closed_at": "2026-09-27T20:17:12Z"
+    },
+    {
+      "issue": 7854,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7854",
+      "closed_at": "2026-09-27T20:18:10Z"
+    },
+    {
+      "issue": 7780,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7780",
+      "closed_at": "2026-09-27T20:20:44Z"
+    },
+    {
+      "issue": 7674,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7674",
+      "closed_at": "2026-09-27T20:21:26Z"
+    },
+    {
+      "issue": 7385,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7385",
+      "closed_at": "2026-09-27T20:25:54Z"
+    },
+    {
+      "issue": 6921,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6921",
+      "closed_at": "2026-09-27T20:29:28Z"
+    },
+    {
+      "issue": 6656,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6656",
+      "closed_at": "2026-09-27T20:33:57Z"
+    },
+    {
+      "issue": 6591,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6591",
+      "closed_at": "2026-09-27T20:34:00Z"
+    },
+    {
+      "issue": 11761,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11761",
+      "closed_at": "2026-09-27T20:53:19Z"
+    },
+    {
+      "issue": 12169,
+      "url": "https://github.com/excalidraw/excalidraw/issues/12169",
+      "closed_at": "2026-09-27T20:55:20Z"
+    },
+    {
+      "issue": 11944,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11944",
+      "closed_at": "2026-09-27T20:59:38Z"
+    },
+    {
+      "issue": 8096,
+      "url": "https://github.com/excalidraw/excalidraw/issues/8096",
+      "closed_at": "2026-09-27T21:01:56Z"
+    },
+    {
+      "issue": 12182,
+      "url": "https://github.com/excalidraw/excalidraw/issues/12182",
+      "closed_at": "2026-09-28T18:51:46Z"
+    },
+    {
+      "issue": 9467,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9467",
+      "closed_at": "2026-10-06T13:05:50Z"
+    },
+    {
+      "issue": 9495,
+      "url": "https://github.com/excalidraw/excalidraw/issues/9495",
+      "closed_at": "2026-10-09T06:41:00Z"
+    },
+    {
+      "issue": 12027,
+      "url": "https://github.com/excalidraw/excalidraw/issues/12027",
+      "closed_at": "2026-10-15T17:45:34Z"
+    },
+    {
+      "issue": 11962,
+      "url": "https://github.com/excalidraw/excalidraw/issues/11962",
+      "closed_at": "2026-10-20T18:25:59Z"
+    },
+    {
+      "issue": 12433,
+      "url": "https://github.com/excalidraw/excalidraw/issues/12433",
+      "closed_at": "2026-10-23T00:17:17Z"
+    },
+    {
+      "issue": 6749,
+      "url": "https://github.com/excalidraw/excalidraw/issues/6749",
+      "closed_at": "2026-11-03T08:20:52Z"
+    },
+    {
+      "issue": 7827,
+      "url": "https://github.com/excalidraw/excalidraw/issues/7827",
+      "closed_at": "2026-11-03T08:20:53Z"
+    }
+  ]
+}
