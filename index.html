@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f6ef">
+  <meta name="description" content="Практикуй разговорный казахский через интерактивные истории, озвученные фразы и короткие задания.">
+  <title>Тіл Mix — разговорный казахский</title>
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Перейти к содержимому</a>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="#top" aria-label="Тіл Mix — главная"><span class="brand-mark" aria-hidden="true">Т</span><span>Тіл<span class="brand-space"> </span>Mix<span class="brand-dot">.</span></span></a>
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="#stories" aria-current="location">Истории</a>
+        <a href="#dictionary">Словарь</a>
+        <a href="#practice">Тренировка</a>
+      </nav>
+      <button class="button button-outline progress-toggle" type="button" data-open-progress><span class="progress-icon" aria-hidden="true">◈</span><span>Мой прогресс</span><span class="xp-chip" id="nav-xp" aria-hidden="true">0 XP</span></button>
+    </div>
+  </header>
+
+  <main class="wrap" id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="hero-label"><span aria-hidden="true"></span> РАЗГОВОРНЫЙ КАЗАХСКИЙ</p>
+        <h1 id="hero-title">Казахский<br>в <em>живых</em><br>диалогах<span>.</span></h1>
+        <p>Закажи кофе, познакомься в универе и спроси дорогу. Твой ответ меняет ход истории.</p>
+        <a class="button button-primary" href="#stories">Выбрать историю <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="hero-demo" aria-label="Пример диалога в кофейне">
+        <span class="orbit orbit-one" aria-hidden="true"></span><span class="orbit orbit-two" aria-hidden="true"></span>
+        <span class="hero-sparkle" aria-hidden="true">✳</span>
+        <div class="demo-card">
+          <div class="demo-head"><span class="demo-avatar" aria-hidden="true">☕</span><div><b>Бариста</b><span>История «Закажи кофе»</span></div><span class="demo-signal" aria-hidden="true"><i></i><i></i><i></i></span></div>
+          <div class="demo-messages">
+            <div class="demo-message"><b lang="kk">Сәлеметсіз бе! Не аласыз?</b><span>Здравствуйте! Что возьмёте?</span></div>
+            <div class="demo-message demo-reply"><b lang="kk">Маған бір латте, өтінемін.</b><span>Мне один латте, пожалуйста.</span></div>
+          </div>
+          <button class="demo-action" type="button" data-story="coffee">Продолжить диалог <span aria-hidden="true">↗</span></button>
+        </div>
+        <div class="hero-caption" aria-hidden="true"><span>✦</span><span lang="kk">Сәлем! Қалайсың?</span></div>
+      </div>
+    </section>
+
+    <ul class="facts" aria-label="Что есть в Тіл Mix">
+      <li><span class="fact-icon" aria-hidden="true">✦</span><div><b>6 живых историй</b><span>Кафе, универ и весь город</span></div></li>
+      <li><span class="fact-icon" aria-hidden="true">ϟ</span><div><b id="streak-text">Серия: 0 дней</b><span>Один пройденный диалог в день</span></div></li>
+      <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="daily-status">Вызов дня</b><button type="button" class="daily-link" id="daily-action">Открыть историю ↗</button></div></li>
+    </ul>
+
+    <section class="catalogue" id="stories" aria-labelledby="stories-title">
+      <div class="section-head">
+        <div><p class="eyebrow"><span aria-hidden="true">✳</span> ИНТЕРАКТИВНЫЕ ДИАЛОГИ</p><h2 id="stories-title">Выбери ситуацию<span>.</span></h2></div>
+        <div class="filters" role="group" aria-label="Темы историй">
+          <button type="button" data-filter="all" aria-pressed="true">Все</button>
+          <button type="button" data-filter="daily" aria-pressed="false">На каждый день</button>
+          <button type="button" data-filter="campus" aria-pressed="false">Учёба</button>
+          <button type="button" data-filter="city" aria-pressed="false">Город</button>
+        </div>
+      </div>
+      <div id="story-grid" class="story-grid"></div>
+      <div class="learning-path">
+        <div><span class="eyebrow">УЧЕБНЫЙ МАРШРУТ</span><h3>От первой фразы до разговора</h3></div>
+        <ol id="path-steps" aria-label="Этапы обучения"></ol>
+      </div>
+    </section>
+
+    <section class="dictionary" id="dictionary" aria-labelledby="dictionary-title">
+      <div class="section-head">
+        <div><p class="eyebrow"><span aria-hidden="true">✳</span> ФРАЗЫ ИЗ ИСТОРИЙ</p><h2 id="dictionary-title">Словарь<span>.</span></h2></div>
+        <button class="button button-outline" id="favorite-filter" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Избранное</button>
+      </div>
+      <label class="sr-only" for="phrase-search">Поиск по словарю</label>
+      <input class="search" id="phrase-search" type="search" placeholder="Найди фразу на русском или казахском">
+      <p class="sr-only" id="phrase-count" aria-live="polite"></p>
+      <div class="phrase-grid" id="phrase-grid"></div>
+      <button class="button button-outline" id="show-more" type="button">Показать все фразы</button>
+    </section>
+
+    <section class="practice" id="practice" aria-labelledby="practice-title">
+      <div class="practice-intro"><p class="eyebrow"><span aria-hidden="true">✳</span> МИНИ-ТЕСТ</p><h2 id="practice-title">Проверь себя<span>.</span></h2><p>Пять фраз из разных историй. Угадай перевод и сразу посмотри разбор.</p><button class="button button-primary" id="quiz-start" type="button">Начать тренировку <span aria-hidden="true">↗</span></button></div>
+      <div class="quiz" id="quiz" aria-live="polite"><div class="practice-art" aria-hidden="true"><span>Ә</span><span>Ң</span><span>І</span></div></div>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap">
+    <a class="brand" href="#top" aria-label="Тіл Mix — к началу"><span class="brand-mark" aria-hidden="true">Т</span><span>Тіл Mix<span class="brand-dot">.</span></span></a>
+    <p>Разговорный казахский для повседневных ситуаций.</p>
+    <a href="#top">Наверх ↑</a>
+  </footer>
+
+  <dialog class="dialog story-dialog" id="story-dialog" aria-labelledby="story-title">
+    <div class="dialog-head"><div><span class="dialog-stage" id="story-stage"></span><h2 id="story-title"></h2></div><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть историю">×</button></div>
+    <div class="story-line" aria-hidden="true"><span id="story-line-fill"></span></div>
+    <div class="scene" id="scene"></div>
+    <p class="story-notice" id="story-notice" role="status"></p>
+    <div class="dialog-foot"><button class="text-button" type="button" id="translate-toggle" aria-pressed="true">Скрыть перевод</button><button class="text-button" type="button" id="story-restart">С начала ↺</button></div>
+  </dialog>
+
+  <dialog class="dialog progress-dialog" id="progress-dialog" aria-labelledby="progress-title">
+    <div class="dialog-head"><h2 id="progress-title">Мой прогресс</h2><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть прогресс">×</button></div>
+    <div id="progress-content"></div>
+  </dialog>
+  <p class="toast" id="toast" role="status"></p>
+  <template id="card-template">
+    <article class="story-card">
+      <div class="card-art"><span class="card-index" aria-hidden="true"></span><span class="card-tag"></span><span class="card-word" lang="kk"></span><span class="card-spark" aria-hidden="true">✦</span></div>
+      <div class="card-content"><div class="card-meta"></div><h3></h3><p></p><button class="card-action" type="button"><span></span><span aria-hidden="true">↗</span></button></div>
+    </article>
+  </template>
+</body>
+</html>
