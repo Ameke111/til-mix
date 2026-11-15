@@ -1,4 +1,5 @@
 import { TIL_CATEGORIES, TIL_STORIES } from './stories.js';
+import { duePhrases, localDay, normalizeReview, quizQuestions, scheduleReview, weekDays } from './learning.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -8,15 +9,17 @@ const storageKey = 'til-mix-progress-v1';
 const stories = new Map(TIL_STORIES.map((story) => [story.id, story]));
 const phrases = new Map();
 const route = [
-  { title: 'Первые фразы', ids: ['coffee', 'campus'] },
-  { title: 'В городе', ids: ['way', 'market'] },
-  { title: 'Договоримся', ids: ['meeting', 'club'] }
+  { title: 'Первые фразы', level: 'A1', ids: ['coffee', 'campus'] },
+  { title: 'В городе', level: 'A1', ids: ['way', 'market'] },
+  { title: 'Договоримся', level: 'A2', ids: ['meeting', 'club'] }
 ];
 
 for (const story of TIL_STORIES) {
   for (const scene of Object.values(story.scenes)) {
     for (const [kk, ru] of [scene.line, ...(scene.choices || []).filter((choice) => choice[2])]) {
-      if (!phrases.has(kk)) phrases.set(kk, { kk, ru });
+      if (!phrases.has(kk)) phrases.set(kk, { kk, ru, categories: [] });
+      const categories = phrases.get(kk).categories;
+      if (!categories.includes(story.category)) categories.push(story.category);
     }
   }
 }
@@ -37,10 +40,11 @@ function storedProgress() {
       bestQuiz: Number.isInteger(saved.bestQuiz) && saved.bestQuiz >= 0 && saved.bestQuiz <= 5 ? saved.bestQuiz : 0,
       translated: saved.translated !== false,
       activeDays: savedDays(saved.activeDays),
-      challengeDays: savedDays(saved.challengeDays)
+      challengeDays: savedDays(saved.challengeDays),
+      review: normalizeReview(Object.fromEntries(Object.entries(saved.review || {}).filter(([phrase]) => phrases.has(phrase))))
     };
   } catch {
-    return { sessions: {}, favorites: new Set(), bestQuiz: 0, translated: true, activeDays: [], challengeDays: [] };
+    return { sessions: {}, favorites: new Set(), bestQuiz: 0, translated: true, activeDays: [], challengeDays: [], review: normalizeReview() };
   }
 }
 
@@ -58,21 +62,17 @@ let activeCategory = 'all';
 let favoritesOnly = false;
 let showAllPhrases = false;
 let quiz;
+let reviewSession;
 let activeAudio;
 let endingReward = 0;
 
-function today() {
-  const date = new Date();
-  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
-}
-
-function challenge(day = today()) {
+function challenge(day = localDay()) {
   return TIL_STORIES[day % TIL_STORIES.length];
 }
 
 function streak() {
   const days = new Set(progress.activeDays);
-  let day = today();
+  let day = localDay();
   if (!days.has(day)) day--;
   let length = 0;
   while (days.has(day--)) length++;
@@ -85,13 +85,13 @@ function experience() {
 }
 
 function completeEnding(session, key) {
-  const day = today();
+  const day = localDay();
   endingReward = 0;
   if (!session.endings.includes(key)) {
     session.endings.push(key);
     endingReward += 10;
   }
-  if (!progress.activeDays.includes(day)) progress.activeDays.push(day);
+  recordActivity(day);
   if (currentStory.id === challenge(day).id && !progress.challengeDays.includes(day)) {
     progress.challengeDays.push(day);
     endingReward += 5;
@@ -99,28 +99,42 @@ function completeEnding(session, key) {
   renderRoute();
 }
 
+function recordActivity(day = localDay()) {
+  if (!progress.activeDays.includes(day)) progress.activeDays.push(day);
+}
+
 function renderRoute() {
+  const day = localDay();
   $('#nav-xp').textContent = experience() + ' XP';
   $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
   const daily = $('#daily-action');
-  const dailyStory = challenge();
-  const dailyDone = progress.challengeDays.includes(today());
+  const dailyStory = challenge(day);
+  const dailyDone = progress.challengeDays.includes(day);
   $('#daily-status').textContent = dailyDone ? 'Вызов дня пройден' : 'Вызов дня · +5 XP';
   daily.dataset.story = dailyStory.id;
   daily.textContent = dailyStory.title + ' ↗';
-  const steps = route.map(({ title, ids }) => {
+  const firstUnfinished = route.findIndex(({ ids }) => ids.some((id) => !progress.sessions[id]?.endings.length));
+  const completedCount = TIL_STORIES.filter(({ id }) => progress.sessions[id]?.endings.length).length;
+  $('#path-summary').textContent = 'Пройдено ' + completedCount + ' из ' + TIL_STORIES.length + ' уроков';
+  const steps = route.map(({ title, level, ids }, index) => {
     const completed = ids.filter((id) => progress.sessions[id]?.endings.length);
     const next = ids.find((id) => !completed.includes(id)) || ids[0];
     const item = elem('li');
-    const action = elem('button', 'path-step', title + ' · ' + completed.length + '/' + ids.length);
+    const action = elem('button', 'path-step');
     action.type = 'button';
     action.dataset.story = next;
+    action.dataset.pathStep = index;
     action.setAttribute('aria-label', title + '. Открыть урок «' + stories.get(next).title + '»');
+    if (index === firstUnfinished) action.setAttribute('aria-current', 'step');
+    const header = elem('span', 'path-step-head');
+    header.append(elem('span', 'path-stage', completed.length === ids.length ? '✓' : String(index + 1)),
+      elem('span', 'path-level', level + ' · ' + completed.length + '/' + ids.length));
+    const description = completed.length === ids.length ? 'Пройдено · сыграть ещё' : stories.get(next).title + ' ↗';
     const meter = elem('span', 'path-meter');
     meter.setAttribute('aria-hidden', 'true');
     meter.style.setProperty('--fill', completed.length / ids.length * 100 + '%');
     meter.append(elem('i'));
-    action.append(meter);
+    action.append(header, elem('strong', '', title), elem('span', 'path-next', description), meter);
     item.append(action);
     return item;
   });
@@ -167,16 +181,28 @@ function notify(message) {
   toastTimer = setTimeout(() => { toast.textContent = ''; }, 4600);
 }
 
+function addToReview(kk, refreshDue = false) {
+  const card = progress.review[kk];
+  const day = localDay();
+  if (!card) progress.review[kk] = { due: day, step: 0, count: 0 };
+  else if (refreshDue) progress.review[kk] = { ...card, due: day, step: 0 };
+  for (const control of document.querySelectorAll('.review-add')) {
+    if (control.dataset.phrase === kk) updateReviewButton(control, kk);
+  }
+  renderReviewSummary();
+  return !card;
+}
+
 function stopSpeech() {
   window.speechSynthesis?.cancel();
   if (activeAudio) {
-    activeAudio.textContent = '◖))';
+    activeAudio.textContent = activeAudio.dataset.idleText || '◖))';
     activeAudio.setAttribute('aria-pressed', 'false');
     activeAudio = undefined;
   }
 }
 
-function audioButton(kk) {
+function audioButton(kk, slow = false) {
   const el = button('icon-button audio-button', '◖))', () => {
     if (activeAudio === el) {
       stopSpeech();
@@ -192,13 +218,13 @@ function audioButton(kk) {
     const utterance = new SpeechSynthesisUtterance(kk);
     utterance.lang = 'kk-KZ';
     utterance.voice = voice;
-    utterance.rate = 0.85;
+    utterance.rate = slow ? 0.65 : 0.95;
     activeAudio = el;
     el.textContent = '■';
     el.setAttribute('aria-pressed', 'true');
     const finish = () => {
       if (activeAudio !== el) return;
-      el.textContent = '◖))';
+      el.textContent = el.dataset.idleText || '◖))';
       el.setAttribute('aria-pressed', 'false');
       activeAudio = undefined;
     };
@@ -209,7 +235,7 @@ function audioButton(kk) {
     };
     synthesis.speak(utterance);
   });
-  el.setAttribute('aria-label', 'Озвучка фразы «' + kk + '»');
+  el.setAttribute('aria-label', (slow ? 'Медленная озвучка' : 'Озвучка') + ' фразы «' + kk + '»');
   el.setAttribute('aria-pressed', 'false');
   return el;
 }
@@ -294,7 +320,12 @@ function renderScene(focus = false, focusIndex) {
     kazakh('p', 'phrase-text', data.line[0]),
     elem('p', 'translation', data.line[1])
   );
-  bubble.append(bubbleText, audioButton(data.line[0]));
+  const bubbleControls = elem('div', 'phrase-controls');
+  const audioSlow = audioButton(data.line[0], true);
+  audioSlow.textContent = '½×';
+  audioSlow.dataset.idleText = '½×';
+  bubbleControls.append(audioButton(data.line[0]), audioSlow);
+  bubble.append(bubbleText, bubbleControls);
   panel.append(bubble);
 
   if (data.end) {
@@ -311,6 +342,7 @@ function renderScene(focus = false, focusIndex) {
         stopSpeech();
         feedback = { message: tip, kind: next ? 'success' : 'retry' };
         if (next) {
+          addToReview(kk);
           session.scene = next;
           if (currentStory.scenes[next].end) completeEnding(session, next);
           save();
@@ -366,7 +398,17 @@ function renderDictionary() {
       }
     });
     updateFavoriteButton(favorite, kk);
-    controls.append(audioButton(kk), favorite);
+    const review = button('icon-button review-add', '', () => {
+      if (!addToReview(kk)) {
+        delete progress.review[kk];
+        renderReviewSummary();
+      }
+      updateReviewButton(review, kk);
+      save();
+    });
+    updateReviewButton(review, kk);
+    review.dataset.phrase = kk;
+    controls.append(audioButton(kk), favorite, review);
     card.append(text, controls);
     fragment.append(card);
   }
@@ -384,6 +426,93 @@ function updateFavoriteButton(el, kk) {
   el.setAttribute('aria-pressed', String(saved));
 }
 
+function updateReviewButton(el, kk) {
+  const active = Object.hasOwn(progress.review, kk);
+  el.textContent = active ? '✓' : '+';
+  el.title = active ? 'Убрать из карточек' : 'В карточки';
+  el.setAttribute('aria-label', 'Карточки: ' + kk);
+  el.setAttribute('aria-pressed', String(active));
+}
+
+function renderReviewSummary(message = '') {
+  const count = duePhrases(progress.review, localDay()).length;
+  const start = $('#review-start');
+  start.disabled = count === 0 && !reviewSession;
+  start.firstChild.textContent = reviewSession ? 'Начать заново ' : 'Начать повторение ';
+  if (reviewSession) return;
+  const intro = elem('p', 'review-count', count ? 'На сегодня: ' + count : 'Пока всё спокойно');
+  const caption = elem('p', '', message || (count
+    ? 'За один подход — до восьми карточек.'
+    : 'Фразы появятся после диалогов, ошибок в тесте или вручную из словаря.'));
+  const dictionaryLink = elem('a', 'text-button review-link', 'Добавить фразы из словаря ↓');
+  dictionaryLink.href = '#dictionary';
+  $('#review-content').replaceChildren(intro, caption, dictionaryLink);
+}
+
+function startReview() {
+  const queue = duePhrases(progress.review, localDay()).slice(0, 8);
+  if (!queue.length) return;
+  reviewSession = { queue, index: 0, revealed: false, graded: 0 };
+  renderReviewSummary();
+  renderReviewCard();
+  $('#review-content').scrollIntoView({ block: 'nearest' });
+}
+
+function renderReviewCard() {
+  stopSpeech();
+  while (reviewSession.index < reviewSession.queue.length && !progress.review[reviewSession.queue[reviewSession.index]]) {
+    reviewSession.index++;
+  }
+  const kk = reviewSession.queue[reviewSession.index];
+  const content = $('#review-content');
+  if (!kk) {
+    const total = reviewSession.graded;
+    if (total) recordActivity();
+    reviewSession = undefined;
+    renderRoute();
+    save();
+    renderReviewSummary(total ? 'Повторено за подход: ' + total + '. Расписание обновлено.' : '');
+    const first = content.firstElementChild;
+    first.tabIndex = -1;
+    first.focus({ preventScroll: true });
+    return;
+  }
+  const bar = elem('div', 'review-card-head');
+  bar.append(elem('p', 'quiz-step', 'КАРТОЧКА ' + (reviewSession.index + 1) + ' ИЗ ' + reviewSession.queue.length), audioButton(kk));
+  const prompt = kazakh('p', 'review-phrase', kk);
+  prompt.tabIndex = -1;
+  const body = elem('div', 'review-face');
+  body.append(bar, prompt);
+  if (!reviewSession.revealed) {
+    body.append(button('button button-outline', 'Показать перевод', () => {
+      reviewSession.revealed = true;
+      renderReviewCard();
+    }));
+  } else {
+    const translation = elem('p', 'translation', phrases.get(kk).ru);
+    translation.setAttribute('role', 'status');
+    body.append(translation);
+    const actions = elem('div', 'review-grades');
+    for (const [grade, label] of [['again', 'Ещё раз'], ['hard', 'Сложно'], ['known', 'Знаю']]) {
+      const gradeButton = button('button button-outline', label, () => {
+        progress.review[kk] = scheduleReview(progress.review[kk], grade, localDay());
+        reviewSession.index++;
+        reviewSession.graded++;
+        reviewSession.revealed = false;
+        recordActivity();
+        save();
+        renderRoute();
+        renderReviewCard();
+      });
+      gradeButton.dataset.grade = grade;
+      actions.append(gradeButton);
+    }
+    body.append(actions);
+  }
+  content.replaceChildren(body);
+  prompt.focus({ preventScroll: true });
+}
+
 function shuffle(items) {
   const shuffled = [...items];
   for (let index = shuffled.length - 1; index > 0; index--) {
@@ -394,14 +523,13 @@ function shuffle(items) {
 }
 
 function startQuiz() {
-  const pool = [...phrases.values()];
-  const questions = shuffle(pool).slice(0, 5).map((phrase) => {
-    const other = [...new Set(pool.map(({ ru }) => ru))].filter((ru) => ru !== phrase.ru);
-    return { ...phrase, options: shuffle([phrase.ru, ...shuffle(other).slice(0, 2)]) };
-  });
-  quiz = { questions, index: 0, score: 0 };
+  const direction = $('#quiz-direction').value;
+  const category = $('#quiz-category').value;
+  const questions = quizQuestions([...phrases.values()], { direction, category, size: 5 }, shuffle);
+  quiz = { questions, direction, index: 0, score: 0, mistakes: 0 };
   $('#quiz-start').firstChild.textContent = 'Начать заново ';
   renderQuiz();
+  $('#quiz').scrollIntoView({ block: 'nearest' });
 }
 
 function renderQuiz() {
@@ -411,23 +539,35 @@ function renderQuiz() {
   card.append(step);
   const question = quiz.questions[quiz.index];
   if (!question) {
-    progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
+    if (quiz.questions.length === 5) progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
+    if (quiz.questions.length) recordActivity();
     renderRoute();
     save();
     card.append(elem('p', 'phrase-text', 'Твой результат — ' + quiz.score + ' из ' + quiz.questions.length));
+    if (quiz.mistakes) {
+      const recap = elem('a', 'text-button', 'Повторить ошибки в карточках ↗');
+      recap.href = '#review';
+      card.append(recap);
+    }
     card.append(button('button button-outline', 'Новые вопросы', startQuiz));
   } else {
-    card.append(kazakh('p', 'phrase-text', question.kk));
+    const prompt = quiz.direction === 'ru-kk' ? elem('p', 'phrase-text', question.prompt) : kazakh('p', 'phrase-text', question.prompt);
+    card.append(prompt);
     for (const option of question.options) {
-      card.append(button('quiz-answer', option, (event) => {
-        const correct = option === question.ru;
+      const answer = button('quiz-answer', option, (event) => {
+        const correct = option === question.correct;
         quiz.score += Number(correct);
         for (const choice of card.querySelectorAll('.quiz-answer')) {
           choice.disabled = true;
-          if (choice.textContent === question.ru) choice.dataset.result = 'correct';
+          if (choice.textContent === question.correct) choice.dataset.result = 'correct';
         }
-        if (!correct) event.currentTarget.dataset.result = 'wrong';
-        const note = elem('p', 'feedback', correct ? 'Верно!' : 'Верный перевод: «' + question.ru + '»');
+        if (!correct) {
+          event.currentTarget.dataset.result = 'wrong';
+          addToReview(question.kk, true);
+          quiz.mistakes++;
+          save();
+        }
+        const note = elem('p', 'feedback', correct ? 'Верно!' : 'Верный перевод: «' + question.correct + '»');
         note.setAttribute('role', 'status');
         const next = button('button button-primary', quiz.index === quiz.questions.length - 1 ? 'Показать результат' : 'Следующий вопрос →', () => {
           quiz.index++;
@@ -435,7 +575,9 @@ function renderQuiz() {
         });
         card.append(note, next);
         next.focus();
-      }));
+      });
+      if (quiz.direction === 'ru-kk') answer.lang = 'kk';
+      card.append(answer);
     }
   }
   $('#quiz').replaceChildren(card);
@@ -446,10 +588,12 @@ function openProgress() {
   renderRoute();
   const content = $('#progress-content');
   const values = Object.values(progress.sessions);
+  const completedStories = values.filter(({ endings }) => endings.length > 0).length;
+  const reviewedCards = Object.values(progress.review).reduce((total, card) => total + card.count, 0);
   const totalEndings = TIL_STORIES.reduce((total, story) => total + Object.values(story.scenes).filter(({ end }) => end).length, 0);
   const metrics = elem('div', 'progress-metrics');
   for (const [number, title] of [
-    [values.filter(({ endings }) => endings.length > 0).length + '/' + TIL_STORIES.length, 'Истории'],
+    [completedStories + '/' + TIL_STORIES.length, 'Истории'],
     [values.reduce((sum, { endings }) => sum + endings.length, 0) + '/' + totalEndings, 'Концовки'],
     [experience() + ' XP', 'Опыт']
   ]) {
@@ -457,6 +601,31 @@ function openProgress() {
     metric.append(elem('b', '', number), elem('span', '', title));
     metrics.append(metric);
   }
+  const activity = elem('section', 'activity');
+  activity.setAttribute('aria-label', 'Активность за эту неделю');
+  const day = localDay();
+  const days = weekDays(day);
+  const activeCount = days.filter((date) => progress.activeDays.includes(date)).length;
+  activity.append(elem('h3', '', 'Цель недели · ' + activeCount + '/3 дня'));
+  const calendar = elem('ol', 'activity-days');
+  for (const [index, date] of days.entries()) {
+    const active = progress.activeDays.includes(date);
+    const item = elem('li', '', ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][index]);
+    item.dataset.active = String(active);
+    item.setAttribute('aria-label', item.textContent + (active ? ': была практика' : ': нет практики'));
+    if (date === day) item.setAttribute('aria-current', 'date');
+    calendar.append(item);
+  }
+  activity.append(calendar);
+  const badges = elem('ul', 'achievements');
+  badges.setAttribute('aria-label', 'Достижения');
+  for (const [achieved, name] of [[completedStories > 0, 'Первый диалог'], [reviewedCards >= 5, 'Пять повторений'], [activeCount >= 3, 'Цель недели']]) {
+    const badge = elem('li', '', (achieved ? '✓ ' : '○ ') + name);
+    badge.dataset.earned = String(achieved);
+    badge.setAttribute('aria-label', name + (achieved ? ': получено' : ': впереди'));
+    badges.append(badge);
+  }
+  activity.append(badges);
   const list = elem('ul', 'progress-list');
   for (const story of TIL_STORIES) {
     const row = elem('li');
@@ -470,7 +639,7 @@ function openProgress() {
     row.append(elem('span', '', story.title), play);
     list.append(row);
   }
-  content.replaceChildren(metrics, list, elem('p', 'progress-note', 'Серия: ' + streak() + ' дн. · Лучший тест: ' + progress.bestQuiz + '/5 · В избранном: ' + progress.favorites.size + '.'));
+  content.replaceChildren(metrics, activity, list, elem('p', 'progress-note', 'Серия: ' + streak() + ' дн. · Лучший тест: ' + progress.bestQuiz + '/5 · В избранном: ' + progress.favorites.size + '.'));
   progressDialog.showModal();
 }
 
@@ -491,7 +660,9 @@ storyDialog.addEventListener('close', () => {
   stopSpeech();
   $('#story-notice').textContent = '';
   renderStories();
-  const target = lastStoryButton?.isConnected ? lastStoryButton : document.querySelector('.card-action[data-story="' + currentStory.id + '"]');
+  const pathStep = lastStoryButton?.dataset.pathStep;
+  const selector = pathStep === undefined ? '.card-action[data-story="' + currentStory.id + '"]' : '[data-path-step="' + pathStep + '"]';
+  const target = lastStoryButton?.isConnected ? lastStoryButton : document.querySelector(selector);
   target?.focus({ preventScroll: true });
 });
 $('[data-open-progress]').addEventListener('click', openProgress);
@@ -518,9 +689,10 @@ $('#show-more').addEventListener('click', () => {
   if (!showAllPhrases) $('#phrase-search').focus({ preventScroll: false });
 });
 $('#quiz-start').addEventListener('click', startQuiz);
+$('#review-start').addEventListener('click', startReview);
 
 function updateNavigation() {
-  const section = location.hash || '#stories';
+  const section = location.hash || '#path';
   for (const link of document.querySelectorAll('.nav a')) {
     if (link.hash === section) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
@@ -532,4 +704,10 @@ updateNavigation();
 renderStories();
 renderDictionary();
 renderRoute();
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !storyDialog.open) renderRoute(); });
+renderReviewSummary();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !storyDialog.open) {
+    renderRoute();
+    renderReviewSummary();
+  }
+});

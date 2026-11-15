@@ -16,7 +16,8 @@
     <div class="wrap header-row">
       <a class="brand" href="#top" aria-label="Тіл Mix — главная"><span class="brand-mark" aria-hidden="true">Т</span><span>Тіл<span class="brand-space"> </span>Mix<span class="brand-dot">.</span></span></a>
       <nav class="nav" aria-label="Основная навигация">
-        <a href="#stories" aria-current="location">Истории</a>
+        <a href="#path" aria-current="location">Маршрут</a>
+        <a href="#stories">Истории</a>
         <a href="#dictionary">Словарь</a>
         <a href="#practice">Тренировка</a>
       </nav>
@@ -30,7 +31,7 @@
         <p class="hero-label"><span aria-hidden="true"></span> РАЗГОВОРНЫЙ КАЗАХСКИЙ</p>
         <h1 id="hero-title">Казахский<br>в <em>живых</em><br>диалогах<span>.</span></h1>
         <p>Закажи кофе, познакомься в универе и спроси дорогу. Твой ответ меняет ход истории.</p>
-        <a class="button button-primary" href="#stories">Выбрать историю <span aria-hidden="true">↗</span></a>
+        <a class="button button-primary" href="#path">Начать учиться <span aria-hidden="true">↗</span></a>
       </div>
       <div class="hero-demo" aria-label="Пример диалога в кофейне">
         <span class="orbit orbit-one" aria-hidden="true"></span><span class="orbit orbit-two" aria-hidden="true"></span>
@@ -49,9 +50,17 @@
 
     <ul class="facts" aria-label="Что есть в Тіл Mix">
       <li><span class="fact-icon" aria-hidden="true">✦</span><div><b>6 живых историй</b><span>Кафе, универ и весь город</span></div></li>
-      <li><span class="fact-icon" aria-hidden="true">ϟ</span><div><b id="streak-text">Серия: 0 дней</b><span>Один пройденный диалог в день</span></div></li>
+      <li><span class="fact-icon" aria-hidden="true">ϟ</span><div><b id="streak-text">Серия: 0 дней</b><span>Диалог, тест или повторение</span></div></li>
       <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="daily-status">Вызов дня</b><button type="button" class="daily-link" id="daily-action">Открыть историю ↗</button></div></li>
     </ul>
+
+    <section class="learning-path" id="path" aria-labelledby="path-title">
+      <div class="section-head">
+        <div><p class="eyebrow"><span aria-hidden="true">✳</span> ТВОЙ МАРШРУТ</p><h2 id="path-title">От первой фразы<br>до разговора<span>.</span></h2></div>
+        <p id="path-summary" class="path-summary"></p>
+      </div>
+      <ol id="path-steps" aria-label="Этапы обучения"></ol>
+    </section>
 
     <section class="catalogue" id="stories" aria-labelledby="stories-title">
       <div class="section-head">
@@ -64,10 +73,16 @@
         </div>
       </div>
       <div id="story-grid" class="story-grid"></div>
-      <div class="learning-path">
-        <div><span class="eyebrow">УЧЕБНЫЙ МАРШРУТ</span><h3>От первой фразы до разговора</h3></div>
-        <ol id="path-steps" aria-label="Этапы обучения"></ol>
+    </section>
+
+    <section class="review" id="review" aria-labelledby="review-title">
+      <div class="review-intro">
+        <p class="eyebrow"><span aria-hidden="true">✦</span> ПОВТОРЕНИЕ</p>
+        <h2 id="review-title">Фразы на повтор<span>.</span></h2>
+        <p>Сначала вспомни перевод, потом переверни карточку. Сложные фразы вернутся раньше.</p>
+        <button class="button button-primary" id="review-start" type="button">Начать повторение <span aria-hidden="true">↗</span></button>
       </div>
+      <div class="review-card" id="review-content"><p class="review-count" id="review-due"></p><p id="review-caption"></p><a class="text-button review-link" href="#dictionary">Добавить фразы из словаря ↓</a></div>
     </section>
 
     <section class="dictionary" id="dictionary" aria-labelledby="dictionary-title">
@@ -83,7 +98,15 @@
     </section>
 
     <section class="practice" id="practice" aria-labelledby="practice-title">
-      <div class="practice-intro"><p class="eyebrow"><span aria-hidden="true">✳</span> МИНИ-ТЕСТ</p><h2 id="practice-title">Проверь себя<span>.</span></h2><p>Пять фраз из разных историй. Угадай перевод и сразу посмотри разбор.</p><button class="button button-primary" id="quiz-start" type="button">Начать тренировку <span aria-hidden="true">↗</span></button></div>
+      <div class="practice-intro">
+        <p class="eyebrow"><span aria-hidden="true">✳</span> МИНИ-ТЕСТ</p><h2 id="practice-title">Проверь себя<span>.</span></h2>
+        <p>Выбери тему и направление перевода. Фразы, в которых ошибёшься, попадут на повторение.</p>
+        <div class="quiz-settings">
+          <label for="quiz-direction">Направление<select id="quiz-direction"><option value="kk-ru">Қазақша → Русский</option><option value="ru-kk">Русский → Қазақша</option></select></label>
+          <label for="quiz-category">Тема<select id="quiz-category"><option value="all">Все фразы</option><option value="daily">На каждый день</option><option value="campus">Учёба</option><option value="city">Город</option></select></label>
+        </div>
+        <button class="button button-primary" id="quiz-start" type="button">Начать тренировку <span aria-hidden="true">↗</span></button>
+      </div>
       <div class="quiz" id="quiz" aria-live="polite"><div class="practice-art" aria-hidden="true"><span>Ә</span><span>Ң</span><span>І</span></div></div>
     </section>
   </main>
