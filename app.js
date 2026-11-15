@@ -1,5 +1,6 @@
 import { TIL_CATEGORIES, TIL_STORIES } from './stories.js';
 import { duePhrases, localDay, normalizeReview, quizQuestions, scheduleReview, weekDays } from './learning.js';
+import { setupAccount } from './account.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -24,10 +25,18 @@ for (const story of TIL_STORIES) {
   }
 }
 
-function storedProgress() {
+function loadGuest() {
   try {
-    const saved = JSON.parse(localStorage.getItem(storageKey)) || {};
-    const sessions = {};
+    return JSON.parse(localStorage.getItem(storageKey)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function readProgress(raw) {
+  try {
+    const saved = raw || {};
+    const sessions = Object.create(null);
     for (const [id, value] of Object.entries(saved.sessions || {})) {
       const story = stories.get(id);
       if (!story || !value || !Object.hasOwn(story.scenes, value.scene)) continue;
@@ -52,7 +61,7 @@ function savedDays(values) {
   return Array.isArray(values) ? [...new Set(values.filter((day) => Number.isInteger(day) && day > 0))] : [];
 }
 
-const progress = storedProgress();
+let progress = readProgress(loadGuest());
 let storageWarning = false;
 let toastTimer;
 let currentStory;
@@ -65,6 +74,7 @@ let quiz;
 let reviewSession;
 let activeAudio;
 let endingReward = 0;
+const quizPlaceholder = $('#quiz').firstElementChild.cloneNode(true);
 
 function challenge(day = localDay()) {
   return TIL_STORIES[day % TIL_STORIES.length];
@@ -142,14 +152,58 @@ function renderRoute() {
 }
 
 function save() {
+  const value = snapshot();
+  if (account.store(value)) return;
   try {
-    localStorage.setItem(storageKey, JSON.stringify({ ...progress, favorites: [...progress.favorites] }));
+    localStorage.setItem(storageKey, JSON.stringify(value));
   } catch {
     if (!storageWarning) {
       storageWarning = true;
       notify('Браузер не дал сохранить прогресс. Он доступен до закрытия вкладки.');
     }
   }
+}
+
+function snapshot() {
+  return JSON.parse(JSON.stringify({ ...progress, favorites: [...progress.favorites] }));
+}
+
+function swapProgress(raw) {
+  if (storyDialog.open) storyDialog.close();
+  stopSpeech();
+  progress = readProgress(raw);
+  quiz = undefined;
+  reviewSession = undefined;
+  $('#quiz').replaceChildren(quizPlaceholder.cloneNode(true));
+  $('#quiz-start').firstChild.textContent = 'Начать тренировку ';
+  renderStories();
+  renderDictionary();
+  renderRoute();
+  renderReviewSummary();
+}
+
+function mergeProgress(raw) {
+  const other = readProgress(raw);
+  for (const [id, session] of Object.entries(other.sessions)) {
+    const current = progress.sessions[id];
+    if (current) current.endings = [...new Set([...current.endings, ...session.endings])];
+    else progress.sessions[id] = session;
+  }
+  for (const phrase of other.favorites) progress.favorites.add(phrase);
+  progress.bestQuiz = Math.max(progress.bestQuiz, other.bestQuiz);
+  progress.activeDays = [...new Set([...progress.activeDays, ...other.activeDays])];
+  progress.challengeDays = [...new Set([...progress.challengeDays, ...other.challengeDays])];
+  for (const [phrase, incoming] of Object.entries(other.review)) {
+    const current = progress.review[phrase];
+    if (!current || incoming.count > current.count || (incoming.count === current.count && incoming.due < current.due)) {
+      progress.review[phrase] = incoming;
+    }
+  }
+  renderStories();
+  renderDictionary();
+  renderRoute();
+  renderReviewSummary();
+  save();
 }
 
 function elem(tag, className, content) {
@@ -283,6 +337,7 @@ function openStory(id, trigger, fromDemo = false) {
   if (fromDemo && session.scene === 'start') session.scene = 'latte';
   save();
   $('#story-title').textContent = currentStory.title;
+  $('#story-share-link').hidden = true;
   renderScene();
   storyDialog.showModal();
   sceneArea.querySelector('[data-initial-focus]').focus({ preventScroll: true });
@@ -606,7 +661,8 @@ function openProgress() {
   const day = localDay();
   const days = weekDays(day);
   const activeCount = days.filter((date) => progress.activeDays.includes(date)).length;
-  activity.append(elem('h3', '', 'Цель недели · ' + activeCount + '/3 дня'));
+  const weeklyGoal = account.getGoal();
+  activity.append(elem('h3', '', 'Цель недели · ' + activeCount + ' из ' + weeklyGoal + ' дн.'));
   const calendar = elem('ol', 'activity-days');
   for (const [index, date] of days.entries()) {
     const active = progress.activeDays.includes(date);
@@ -619,7 +675,7 @@ function openProgress() {
   activity.append(calendar);
   const badges = elem('ul', 'achievements');
   badges.setAttribute('aria-label', 'Достижения');
-  for (const [achieved, name] of [[completedStories > 0, 'Первый диалог'], [reviewedCards >= 5, 'Пять повторений'], [activeCount >= 3, 'Цель недели']]) {
+  for (const [achieved, name] of [[completedStories > 0, 'Первый диалог'], [reviewedCards >= 5, 'Пять повторений'], [activeCount >= weeklyGoal, 'Цель недели']]) {
     const badge = elem('li', '', (achieved ? '✓ ' : '○ ') + name);
     badge.dataset.earned = String(achieved);
     badge.setAttribute('aria-label', name + (achieved ? ': получено' : ': впереди'));
@@ -672,6 +728,20 @@ $('#translate-toggle').addEventListener('click', () => {
   save();
 });
 $('#story-restart').addEventListener('click', restartStory);
+$('#story-share').addEventListener('click', async () => {
+  const target = new URL(location.href);
+  target.searchParams.set('lesson', currentStory.id);
+  target.hash = '#stories';
+  try {
+    await navigator.clipboard.writeText(target.href);
+    notify('Ссылка на историю скопирована.');
+  } catch {
+    const field = $('#story-share-link');
+    field.hidden = false;
+    field.value = target.href;
+    field.select();
+  }
+});
 $('#phrase-search').addEventListener('input', () => {
   stopSpeech();
   renderDictionary();
@@ -699,12 +769,21 @@ function updateNavigation() {
   }
 }
 
+const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify });
 window.addEventListener('hashchange', updateNavigation);
 updateNavigation();
 renderStories();
 renderDictionary();
 renderRoute();
 renderReviewSummary();
+const sharedLesson = new URL(location.href).searchParams.get('lesson');
+if (stories.has(sharedLesson)) {
+  void account.ready.then(() => {
+    if (!document.querySelector('dialog[open]')) {
+      openStory(sharedLesson, $('#story-grid').querySelector('[data-story="' + sharedLesson + '"]'));
+    }
+  });
+}
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !storyDialog.open) {
     renderRoute();

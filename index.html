@@ -8,6 +8,7 @@
   <title>Тіл Mix — разговорный казахский</title>
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="account.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -21,7 +22,10 @@
         <a href="#dictionary">Словарь</a>
         <a href="#practice">Тренировка</a>
       </nav>
-      <button class="button button-outline progress-toggle" type="button" data-open-progress><span class="progress-icon" aria-hidden="true">◈</span><span>Мой прогресс</span><span class="xp-chip" id="nav-xp" aria-hidden="true">0 XP</span></button>
+      <div class="header-actions">
+        <button class="button button-outline progress-toggle" type="button" data-open-progress aria-label="Мой прогресс"><span class="progress-icon" aria-hidden="true">◈</span><span class="progress-label">Мой прогресс</span><span class="xp-chip" id="nav-xp" aria-hidden="true">0 XP</span></button>
+        <button class="button account-trigger" id="open-account" type="button"><span class="profile-dot" aria-hidden="true">Т</span><span id="profile-trigger-text">Профиль</span></button>
+      </div>
     </div>
   </header>
 
@@ -114,7 +118,7 @@
   <footer class="site-footer wrap">
     <a class="brand" href="#top" aria-label="Тіл Mix — к началу"><span class="brand-mark" aria-hidden="true">Т</span><span>Тіл Mix<span class="brand-dot">.</span></span></a>
     <p>Разговорный казахский для повседневных ситуаций.</p>
-    <a href="#top">Наверх ↑</a>
+    <button class="text-button" id="open-feedback" type="button">Обратная связь ↗</button>
   </footer>
 
   <dialog class="dialog story-dialog" id="story-dialog" aria-labelledby="story-title">
@@ -122,13 +126,90 @@
     <div class="story-line" aria-hidden="true"><span id="story-line-fill"></span></div>
     <div class="scene" id="scene"></div>
     <p class="story-notice" id="story-notice" role="status"></p>
-    <div class="dialog-foot"><button class="text-button" type="button" id="translate-toggle" aria-pressed="true">Скрыть перевод</button><button class="text-button" type="button" id="story-restart">С начала ↺</button></div>
+    <input class="search story-share-link" aria-label="Ссылка на историю" id="story-share-link" readonly hidden>
+    <div class="dialog-foot"><button class="text-button" type="button" id="translate-toggle" aria-pressed="true">Скрыть перевод</button><button class="text-button" type="button" id="story-share">Ссылка ↗</button><button class="text-button" type="button" id="story-restart">С начала ↺</button></div>
   </dialog>
 
   <dialog class="dialog progress-dialog" id="progress-dialog" aria-labelledby="progress-title">
     <div class="dialog-head"><h2 id="progress-title">Мой прогресс</h2><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть прогресс">×</button></div>
     <div id="progress-content"></div>
   </dialog>
+
+  <dialog class="dialog account-dialog" id="account-dialog" aria-labelledby="account-title">
+    <div class="account-shell">
+      <aside class="account-cover">
+        <span class="profile-emblem" aria-hidden="true">Т<span>✳</span></span>
+        <p class="eyebrow">ТІЛ MIX</p>
+        <p class="account-cover-title">Твой<br>казахский<span>.</span></p>
+        <p>Настрой цель и продолжай с того места, где остановился.</p>
+        <span class="account-sticker" lang="kk" aria-hidden="true">Бірге үйренейік!</span>
+      </aside>
+      <div class="account-main">
+        <div class="dialog-head"><div><span class="dialog-stage" id="profile-mode"></span><h2 id="account-title">Мой профиль</h2></div><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть профиль">×</button></div>
+        <div class="account-body">
+          <div class="account-tabs" id="auth-tabs" role="group" aria-label="Вход или регистрация" hidden>
+            <button type="button" data-auth-mode="login" aria-pressed="true">Вход</button>
+            <button type="button" data-auth-mode="register" aria-pressed="false">Регистрация</button>
+          </div>
+          <form id="auth-form" class="til-form" hidden>
+            <p class="form-note" id="auth-intro"></p>
+            <label id="register-name">Имя или псевдоним<input name="name" maxlength="36" autocomplete="nickname" placeholder="Например, Аружан"></label>
+            <label for="auth-login">Логин</label>
+            <input id="auth-login" name="login" required minlength="3" maxlength="24" pattern="[a-zA-Z0-9_\-]{3,24}" autocomplete="username" spellcheck="false" autocapitalize="none" placeholder="aruzhan_26" aria-describedby="login-help">
+            <span id="login-help" class="form-note">Латиница, цифры, дефис и подчёркивание. 3–24 символа.</span>
+            <label for="auth-password">Пароль</label>
+            <div class="password-control"><input id="auth-password" name="password" type="password" maxlength="128" required autocomplete="current-password" aria-describedby="password-help"><button class="text-button" type="button" id="show-auth-password" aria-pressed="false">Показать</button></div>
+            <span id="password-help" class="form-note" hidden>Минимум 12 символов. Длинную фразу проще запомнить.</span>
+            <label class="form-check" id="register-accept" hidden><input name="accept" type="checkbox">Согласен на хранение псевдонима и прогресса в этом экземпляре приложения.</label>
+            <button class="button button-primary" id="auth-submit" type="submit">Войти <span aria-hidden="true">↗</span></button>
+            <button class="text-button" id="open-guest-settings" type="button">Настройки гостя</button>
+          </form>
+          <div id="profile-settings">
+            <p class="form-note" id="profile-intro"></p>
+            <form id="profile-form" class="til-form">
+              <label>Имя или псевдоним<input name="name" required maxlength="36" autocomplete="nickname"></label>
+              <label>Цель на неделю<select name="weeklyGoal"><option value="1">1 день</option><option value="2">2 дня</option><option value="3">3 дня</option><option value="4">4 дня</option><option value="5">5 дней</option><option value="6">6 дней</option><option value="7">7 дней</option></select></label>
+              <button class="button button-primary" type="submit">Сохранить настройки</button>
+            </form>
+            <div class="profile-tools">
+              <button class="button button-outline" id="export-progress" type="button">Скачать прогресс</button>
+              <label class="button button-outline import-progress">Загрузить копию<input id="import-progress" type="file" accept=".json,application/json"></label>
+              <button class="button button-outline" id="merge-guest-progress" type="button" hidden>Добавить прогресс гостя</button>
+              <button class="button button-outline" id="retry-sync" type="button" hidden>Объединить с сервером</button>
+              <button class="text-button" id="back-to-auth" type="button" hidden>Войти или зарегистрироваться ↗</button>
+              <button class="text-button" id="account-logout" type="button" hidden>Выйти из аккаунта</button>
+            </div>
+            <details class="profile-danger" id="account-delete" hidden>
+              <summary>Удалить аккаунт</summary>
+              <form class="til-form" id="delete-form">
+                <p class="form-note">Профиль, прогресс и сохранённые обращения на сервере будут удалены.</p>
+                <label>Текущий пароль<input name="password" type="password" required maxlength="128" autocomplete="current-password"></label>
+                <label class="form-check"><input type="checkbox" required>Подтверждаю удаление.</label>
+                <button class="button button-danger" type="submit">Удалить аккаунт</button>
+              </form>
+            </details>
+          </div>
+          <p class="form-status" id="account-status" role="status"></p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
+    <div class="dialog-head"><div><span class="dialog-stage">ПОМОГИ УЛУЧШИТЬ ТІЛ MIX</span><h2 id="feedback-title">Обратная связь</h2></div><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть форму">×</button></div>
+    <div class="account-body">
+      <p class="form-note" id="feedback-intro"></p>
+      <form id="feedback-form" class="til-form">
+        <label>Тема<select name="category"><option value="lesson">Ошибка в уроке</option><option value="interface">Работа сайта</option><option value="idea">Идея для улучшения</option></select></label>
+        <div class="form-textarea-head"><label for="feedback-message">Сообщение</label><span id="feedback-count" class="form-note">0 / 1200</span></div>
+        <textarea name="message" id="feedback-message" required minlength="8" maxlength="1200" rows="5" placeholder="Что произошло и в какой истории?"></textarea>
+        <button class="button button-primary" id="feedback-submit" type="submit">Сохранить заметку</button>
+      </form>
+      <p class="form-status" id="feedback-status" role="status"></p>
+      <div id="feedback-history" class="feedback-history"></div>
+    </div>
+  </dialog>
+
   <p class="toast" id="toast" role="status"></p>
   <template id="card-template">
     <article class="story-card">
