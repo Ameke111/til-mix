@@ -1,19 +1,19 @@
-import { TIL_CATEGORIES, TIL_STORIES } from './stories.js';
+import { TIL_CATEGORIES, TIL_ROUTE, TIL_STORIES } from './stories.js';
 import { duePhrases, localDay, normalizeReview, quizQuestions, scheduleReview, weekDays } from './learning.js';
 import { setupAccount } from './account.js';
+import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor } from './game.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
 const progressDialog = $('#progress-dialog');
 const sceneArea = $('#scene');
 const storageKey = 'til-mix-progress-v1';
-const stories = new Map(TIL_STORIES.map((story) => [story.id, story]));
+const stories = new Map(TIL_STORIES.map((story) => [story.id, {
+  ...story, endingCount: Object.values(story.scenes).filter(({ end }) => end).length
+}]));
 const phrases = new Map();
-const route = [
-  { title: 'Первые фразы', level: 'A1', ids: ['coffee', 'campus'] },
-  { title: 'В городе', level: 'A1', ids: ['way', 'market'] },
-  { title: 'Договоримся', level: 'A2', ids: ['meeting', 'club'] }
-];
+const totalEndings = [...stories.values()].reduce((total, story) => total + story.endingCount, 0);
+const lessonOrder = TIL_ROUTE.flatMap(({ ids }) => ids);
 
 for (const story of TIL_STORIES) {
   for (const scene of Object.values(story.scenes)) {
@@ -40,7 +40,7 @@ function readProgress(raw) {
     for (const [id, value] of Object.entries(saved.sessions || {})) {
       const story = stories.get(id);
       if (!story || !value || !Object.hasOwn(story.scenes, value.scene)) continue;
-      const endings = Array.isArray(value.endings) ? value.endings.filter((key) => story.scenes[key]?.end) : [];
+      const endings = Array.isArray(value.endings) ? value.endings.filter((key) => Object.hasOwn(story.scenes, key) && story.scenes[key].end) : [];
       sessions[id] = { scene: value.scene, endings: [...new Set(endings)] };
     }
     return {
@@ -50,10 +50,11 @@ function readProgress(raw) {
       translated: saved.translated !== false,
       activeDays: savedDays(saved.activeDays),
       challengeDays: savedDays(saved.challengeDays),
+      game: normalizeGame(saved.game, phrases),
       review: normalizeReview(Object.fromEntries(Object.entries(saved.review || {}).filter(([phrase]) => phrases.has(phrase))))
     };
   } catch {
-    return { sessions: {}, favorites: new Set(), bestQuiz: 0, translated: true, activeDays: [], challengeDays: [], review: normalizeReview() };
+    return readProgress({});
   }
 }
 
@@ -68,6 +69,8 @@ let currentStory;
 let feedback;
 let lastStoryButton;
 let activeCategory = 'all';
+const catalogueBatch = 6;
+let visibleStories = catalogueBatch;
 let favoritesOnly = false;
 let showAllPhrases = false;
 let quiz;
@@ -90,22 +93,18 @@ function streak() {
 }
 
 function experience() {
-  const ends = Object.values(progress.sessions).reduce((sum, item) => sum + item.endings.length, 0);
-  return ends * 10 + progress.challengeDays.length * 5 + progress.bestQuiz * 2;
+  return gameStats(progress, stories).xp;
 }
 
 function completeEnding(session, key) {
   const day = localDay();
-  endingReward = 0;
-  if (!session.endings.includes(key)) {
-    session.endings.push(key);
-    endingReward += 10;
-  }
+  const before = experience();
+  if (!session.endings.includes(key)) session.endings.push(key);
   recordActivity(day);
   if (currentStory.id === challenge(day).id && !progress.challengeDays.includes(day)) {
     progress.challengeDays.push(day);
-    endingReward += 5;
   }
+  endingReward = experience() - before;
   renderRoute();
 }
 
@@ -113,21 +112,52 @@ function recordActivity(day = localDay()) {
   if (!progress.activeDays.includes(day)) progress.activeDays.push(day);
 }
 
-function renderRoute() {
-  const day = localDay();
-  $('#nav-xp').textContent = experience() + ' XP';
-  $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
+function renderGame(stats, day) {
+  const rank = rankFor(stats.xp);
+  $('#nav-xp').textContent = stats.xp + ' XP';
+  $('#game-level').textContent = 'УРОВЕНЬ ' + rank.level;
+  $('#game-rank').textContent = rank.name;
+  $('#game-xp').value = rank.fraction;
+  $('#game-xp-label').textContent = rank.next
+    ? stats.xp + ' XP · до следующего уровня ещё ' + (rank.next - stats.xp)
+    : stats.xp + ' XP · высший уровень';
+  const next = $('#game-next');
+  next.dataset.story = lessonOrder.find((id) => !stats.completed.has(id))
+    || lessonOrder.find((id) => !stats.mastered.has(id)) || challenge(day).id;
+  const nextSession = progress.sessions[next.dataset.story];
+  $('#game-next-text').textContent = nextSession && nextSession.scene !== 'start' && !stats.completed.has(next.dataset.story)
+    ? 'Продолжить: ' + stories.get(next.dataset.story).title
+    : stories.get(next.dataset.story).title;
+
+  const tasks = dailyTasks(progress, day);
   const daily = $('#daily-action');
   const dailyStory = challenge(day);
-  const dailyDone = progress.challengeDays.includes(day);
-  $('#daily-status').textContent = dailyDone ? 'Вызов дня пройден' : 'Вызов дня · +5 XP';
   daily.dataset.story = dailyStory.id;
   daily.textContent = dailyStory.title + ' ↗';
-  const firstUnfinished = route.findIndex(({ ids }) => ids.some((id) => !progress.sessions[id]?.endings.length));
-  const completedCount = TIL_STORIES.filter(({ id }) => progress.sessions[id]?.endings.length).length;
-  $('#path-summary').textContent = 'Пройдено ' + completedCount + ' из ' + TIL_STORIES.length + ' уроков';
-  const steps = route.map(({ title, level, ids }, index) => {
-    const completed = ids.filter((id) => progress.sessions[id]?.endings.length);
+  const marks = [
+    ['#quest-story', tasks.story, '+5 XP'],
+    ['#quest-quiz', tasks.quiz, '+5 XP'],
+    ['#quest-review', tasks.review === tasks.reviewTarget, tasks.review + '/' + tasks.reviewTarget + ' · +5 XP']
+  ];
+  for (const [selector, done, label] of marks) {
+    const row = $(selector);
+    row.dataset.done = String(done);
+    row.querySelector('.quest-value').textContent = done ? '✓ Готово' : label;
+  }
+  const count = marks.filter(([, done]) => done).length;
+  $('#quest-status').textContent = count + ' ИЗ 3 ВЫПОЛНЕНО';
+  $('#quest-bonus').textContent = count === 3 ? '✓ Бонус получен' : '+15 XP за всё';
+  $('#quest-bonus').dataset.earned = String(count === 3);
+}
+
+function renderRoute() {
+  const stats = gameStats(progress, stories);
+  renderGame(stats, localDay());
+  $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
+  const firstUnfinished = TIL_ROUTE.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
+  $('#path-summary').textContent = 'Пройдено ' + stats.completed.size + ' из ' + TIL_STORIES.length + ' уроков';
+  const steps = TIL_ROUTE.map(({ title, level, ids }, index) => {
+    const completed = ids.filter((id) => stats.completed.has(id));
     const next = ids.find((id) => !completed.includes(id)) || ids[0];
     const item = elem('li');
     const action = elem('button', 'path-step');
@@ -193,6 +223,7 @@ function mergeProgress(raw) {
   progress.bestQuiz = Math.max(progress.bestQuiz, other.bestQuiz);
   progress.activeDays = [...new Set([...progress.activeDays, ...other.activeDays])];
   progress.challengeDays = [...new Set([...progress.challengeDays, ...other.challengeDays])];
+  mergeGame(progress.game, other.game);
   for (const [phrase, incoming] of Object.entries(other.review)) {
     const current = progress.review[phrase];
     if (!current || incoming.count > current.count || (incoming.count === current.count && incoming.due < current.due)) {
@@ -298,27 +329,37 @@ window.speechSynthesis?.getVoices();
 
 function renderStories() {
   const fragment = document.createDocumentFragment();
-  for (const [index, story] of TIL_STORIES.entries()) {
-    if (activeCategory !== 'all' && story.category !== activeCategory) continue;
+  const query = $('#story-search').value.trim().toLowerCase();
+  const matches = lessonOrder.map((id) => stories.get(id)).filter((story) =>
+    (activeCategory === 'all' || story.category === activeCategory)
+    && (story.title + ' ' + story.word + ' ' + story.description).toLowerCase().includes(query)
+  );
+  const page = matches.slice(0, visibleStories);
+  for (const [index, story] of page.entries()) {
     const card = $('#card-template').content.firstElementChild.cloneNode(true);
     const session = progress.sessions[story.id];
     const scene = session && story.scenes[session.scene];
     card.dataset.tone = story.tone;
     card.style.animationDelay = Math.min(index * 35, 150) + 'ms';
-    card.querySelector('.card-index').textContent = String(index + 1).padStart(2, '0');
     card.querySelector('.card-tag').textContent = TIL_CATEGORIES[story.category];
     card.querySelector('.card-word').textContent = story.word;
-    card.querySelector('.card-meta').textContent = story.level + ' · ' + story.minutes + ' мин' + (session?.endings.length ? ' · ' + session.endings.length + '/4 концовок' : '');
+    card.querySelector('.card-meta').textContent = story.level + ' · ' + story.minutes + ' мин';
+    if (session?.endings.length) {
+      const mastered = session.endings.length === story.endingCount;
+      card.querySelector('.card-meta').append(elem('span', 'card-score', (mastered ? '✓ ' : '') + session.endings.length + '/' + story.endingCount + ' концовок'));
+    }
     card.querySelector('h3').textContent = story.title;
     card.querySelector('p').textContent = story.description;
     const link = card.querySelector('button');
-    const action = scene?.end ? 'Сыграть ещё' : scene ? 'Продолжить' : 'Начать диалог';
+    const action = scene?.end ? 'Сыграть ещё' : scene && session.scene !== 'start' ? 'Продолжить' : 'Начать диалог';
     link.firstElementChild.textContent = action;
     link.dataset.story = story.id;
     link.setAttribute('aria-label', action + '. ' + story.title);
     fragment.append(card);
   }
   $('#story-grid').replaceChildren(fragment);
+  $('#story-results').textContent = matches.length ? 'Показано уроков: ' + page.length + ' из ' + matches.length : 'По этому запросу уроков нет.';
+  $('#more-stories').hidden = page.length >= matches.length;
 }
 
 function sessionFor(story) {
@@ -339,7 +380,8 @@ function openStory(id, trigger, fromDemo = false) {
   $('#story-title').textContent = currentStory.title;
   $('#story-share-link').hidden = true;
   renderScene();
-  storyDialog.showModal();
+  if (!storyDialog.open) storyDialog.showModal();
+  storyDialog.scrollTop = 0;
   sceneArea.querySelector('[data-initial-focus]').focus({ preventScroll: true });
 }
 
@@ -386,9 +428,25 @@ function renderScene(focus = false, focusIndex) {
   if (data.end) {
     panel.append(elem('h3', '', data.end));
     if (endingReward) panel.append(elem('p', 'xp-bonus', '+' + endingReward + ' XP'));
+    const collection = elem('div', 'ending-collection');
+    const done = session.endings.length === currentStory.endingCount;
+    collection.append(elem('p', '', done ? '✓ Все концовки. Бонус за урок получен'
+      : 'Открыто концовок: ' + session.endings.length + '/' + currentStory.endingCount + ' · +15 XP за все'));
+    const list = elem('ul', 'ending-list');
+    for (const [key, scene] of Object.entries(currentStory.scenes)) {
+      if (!scene.end) continue;
+      const earned = session.endings.includes(key);
+      const item = elem('li', '', earned ? '✓ ' + scene.end : '○ Закрыта');
+      item.dataset.earned = String(earned);
+      list.append(item);
+    }
+    collection.append(list);
+    panel.append(collection);
     const actions = elem('div', 'scene-actions');
-    actions.append(button('button button-primary', 'Попробовать другую ветку', restartStory));
-    actions.append(button('button button-outline', 'К историям', () => storyDialog.close()));
+    const next = lessonOrder.slice(lessonOrder.indexOf(currentStory.id) + 1).find((id) => !progress.sessions[id]?.endings.length)
+      || lessonOrder.find((id) => !progress.sessions[id]?.endings.length);
+    if (next) actions.append(button('button button-primary', 'Следующий урок ↗', () => openStory(next, lastStoryButton)));
+    actions.append(button('button ' + (next ? 'button-outline' : 'button-primary'), 'Другая ветка ↺', restartStory));
     panel.append(actions);
   } else {
     panel.append(elem('p', 'scene-context', 'Что ты ответишь?'));
@@ -507,7 +565,7 @@ function renderReviewSummary(message = '') {
 function startReview() {
   const queue = duePhrases(progress.review, localDay()).slice(0, 8);
   if (!queue.length) return;
-  reviewSession = { queue, index: 0, revealed: false, graded: 0 };
+  reviewSession = { queue, index: 0, revealed: false, graded: 0, earned: 0 };
   renderReviewSummary();
   renderReviewCard();
   $('#review-content').scrollIntoView({ block: 'nearest' });
@@ -521,12 +579,12 @@ function renderReviewCard() {
   const kk = reviewSession.queue[reviewSession.index];
   const content = $('#review-content');
   if (!kk) {
-    const total = reviewSession.graded;
+    const { graded: total, earned } = reviewSession;
     if (total) recordActivity();
     reviewSession = undefined;
     renderRoute();
     save();
-    renderReviewSummary(total ? 'Повторено за подход: ' + total + '. Расписание обновлено.' : '');
+    renderReviewSummary(total ? 'Повторено за подход: ' + total + (earned ? ' · +' + earned + ' XP' : '') + '. Расписание обновлено.' : '');
     const first = content.firstElementChild;
     first.tabIndex = -1;
     first.focus({ preventScroll: true });
@@ -550,11 +608,15 @@ function renderReviewCard() {
     const actions = elem('div', 'review-grades');
     for (const [grade, label] of [['again', 'Ещё раз'], ['hard', 'Сложно'], ['known', 'Знаю']]) {
       const gradeButton = button('button button-outline', label, () => {
-        progress.review[kk] = scheduleReview(progress.review[kk], grade, localDay());
+        const day = localDay();
+        const before = experience();
+        progress.review[kk] = scheduleReview(progress.review[kk], grade, day);
+        countReview(progress.game, day, kk);
+        reviewSession.earned += experience() - before;
         reviewSession.index++;
         reviewSession.graded++;
         reviewSession.revealed = false;
-        recordActivity();
+        recordActivity(day);
         save();
         renderRoute();
         renderReviewCard();
@@ -594,11 +656,17 @@ function renderQuiz() {
   card.append(step);
   const question = quiz.questions[quiz.index];
   if (!question) {
-    if (quiz.questions.length === 5) progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
+    const before = experience();
+    if (quiz.questions.length === 5) {
+      progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
+      passDailyQuiz(progress.game, localDay(), quiz.score);
+    }
     if (quiz.questions.length) recordActivity();
     renderRoute();
     save();
     card.append(elem('p', 'phrase-text', 'Твой результат — ' + quiz.score + ' из ' + quiz.questions.length));
+    const earned = experience() - before;
+    if (earned) card.append(elem('p', 'xp-bonus', '+' + earned + ' XP'));
     if (quiz.mistakes) {
       const recap = elem('a', 'text-button', 'Повторить ошибки в карточках ↗');
       recap.href = '#review';
@@ -642,15 +710,13 @@ function renderQuiz() {
 function openProgress() {
   renderRoute();
   const content = $('#progress-content');
-  const values = Object.values(progress.sessions);
-  const completedStories = values.filter(({ endings }) => endings.length > 0).length;
+  const stats = gameStats(progress, stories);
   const reviewedCards = Object.values(progress.review).reduce((total, card) => total + card.count, 0);
-  const totalEndings = TIL_STORIES.reduce((total, story) => total + Object.values(story.scenes).filter(({ end }) => end).length, 0);
   const metrics = elem('div', 'progress-metrics');
   for (const [number, title] of [
-    [completedStories + '/' + TIL_STORIES.length, 'Истории'],
-    [values.reduce((sum, { endings }) => sum + endings.length, 0) + '/' + totalEndings, 'Концовки'],
-    [experience() + ' XP', 'Опыт']
+    [stats.completed.size + '/' + TIL_STORIES.length, 'Истории'],
+    [stats.endings + '/' + totalEndings, 'Концовки'],
+    [stats.xp + ' XP', 'Опыт']
   ]) {
     const metric = elem('div');
     metric.append(elem('b', '', number), elem('span', '', title));
@@ -662,7 +728,7 @@ function openProgress() {
   const days = weekDays(day);
   const activeCount = days.filter((date) => progress.activeDays.includes(date)).length;
   const weeklyGoal = account.getGoal();
-  activity.append(elem('h3', '', 'Цель недели · ' + activeCount + ' из ' + weeklyGoal + ' дн.'));
+  activity.append(elem('h3', '', (activeCount >= weeklyGoal ? '✓ ' : '') + 'Цель недели · ' + activeCount + ' из ' + weeklyGoal + ' дн.'));
   const calendar = elem('ol', 'activity-days');
   for (const [index, date] of days.entries()) {
     const active = progress.activeDays.includes(date);
@@ -673,20 +739,35 @@ function openProgress() {
     calendar.append(item);
   }
   activity.append(calendar);
-  const badges = elem('ul', 'achievements');
-  badges.setAttribute('aria-label', 'Достижения');
-  for (const [achieved, name] of [[completedStories > 0, 'Первый диалог'], [reviewedCards >= 5, 'Пять повторений'], [activeCount >= weeklyGoal, 'Цель недели']]) {
-    const badge = elem('li', '', (achieved ? '✓ ' : '○ ') + name);
+  const badgeSection = elem('section', 'badge-section');
+  const badges = elem('ul', 'badge-grid');
+  const badgeGoals = [
+    ['✦', 'Первый разговор', 'Заверши один диалог', stats.completed.size > 0],
+    ['◆', 'Коллекционер', 'Открой все концовки любого урока', stats.mastered.size > 0],
+    ['↗', 'Искатель', 'Заверши 6 разных уроков', stats.completed.size >= 6],
+    ['⧉', 'Память в форме', 'Повтори карточки 20 раз', reviewedCards >= 20],
+    ['ϟ', 'Без ошибок', 'Набери 5 из 5 в тесте', progress.bestQuiz === 5],
+    ['☀', 'Ударный день', 'Выполни все три задания дня', stats.perfectDays > 0],
+    ['✳', 'Полный маршрут', 'Заверши все уроки', stats.completed.size === TIL_STORIES.length]
+  ];
+  badgeSection.append(elem('h3', '', 'Награды · ' + badgeGoals.filter(([, , , earned]) => earned).length + '/' + badgeGoals.length));
+  for (const [icon, name, requirement, achieved] of badgeGoals) {
+    const badge = elem('li');
     badge.dataset.earned = String(achieved);
-    badge.setAttribute('aria-label', name + (achieved ? ': получено' : ': впереди'));
+    const mark = elem('span', 'badge-mark', achieved ? icon : '○');
+    mark.setAttribute('aria-hidden', 'true');
+    const label = elem('span');
+    label.append(elem('strong', '', name), elem('small', '', achieved ? 'Получено' : requirement));
+    badge.append(mark, label);
     badges.append(badge);
   }
-  activity.append(badges);
+  badgeSection.append(badges);
   const list = elem('ul', 'progress-list');
-  for (const story of TIL_STORIES) {
+  for (const id of lessonOrder) {
+    const story = stories.get(id);
     const row = elem('li');
     const session = progress.sessions[story.id];
-    const label = session ? session.endings.length + ' из 4' : 'Начать';
+    const label = session?.endings.length ? session.endings.length + ' из ' + story.endingCount : 'Начать';
     const play = button('text-button', label + ' ↗', () => {
       progressDialog.close();
       openStory(story.id, $('[data-open-progress]'));
@@ -695,7 +776,9 @@ function openProgress() {
     row.append(elem('span', '', story.title), play);
     list.append(row);
   }
-  content.replaceChildren(metrics, activity, list, elem('p', 'progress-note', 'Серия: ' + streak() + ' дн. · Лучший тест: ' + progress.bestQuiz + '/5 · В избранном: ' + progress.favorites.size + '.'));
+  const allLessons = elem('details', 'progress-lessons');
+  allLessons.append(elem('summary', '', 'Все уроки и концовки'), list);
+  content.replaceChildren(metrics, activity, badgeSection, allLessons, elem('p', 'progress-note', 'Серия: ' + streak() + ' дн. · Лучший тест: ' + progress.bestQuiz + '/5 · В избранном: ' + progress.favorites.size + '.'));
   progressDialog.showModal();
 }
 
@@ -707,6 +790,7 @@ document.addEventListener('click', (event) => {
   if (close) close.closest('dialog').close();
   if (filter) {
     activeCategory = filter.dataset.filter;
+    visibleStories = catalogueBatch;
     for (const item of document.querySelectorAll('[data-filter]')) item.setAttribute('aria-pressed', String(item === filter));
     renderStories();
   }
@@ -717,11 +801,12 @@ storyDialog.addEventListener('close', () => {
   $('#story-notice').textContent = '';
   renderStories();
   const pathStep = lastStoryButton?.dataset.pathStep;
-  const selector = pathStep === undefined ? '.card-action[data-story="' + currentStory.id + '"]' : '[data-path-step="' + pathStep + '"]';
+  const previous = lastStoryButton?.dataset.story || currentStory.id;
+  const selector = pathStep === undefined ? '.card-action[data-story="' + previous + '"]' : '[data-path-step="' + pathStep + '"]';
   const target = lastStoryButton?.isConnected ? lastStoryButton : document.querySelector(selector);
   target?.focus({ preventScroll: true });
 });
-$('[data-open-progress]').addEventListener('click', openProgress);
+for (const control of document.querySelectorAll('[data-open-progress]')) control.addEventListener('click', openProgress);
 $('#translate-toggle').addEventListener('click', () => {
   progress.translated = !progress.translated;
   updateTranslation();
@@ -760,6 +845,16 @@ $('#show-more').addEventListener('click', () => {
 });
 $('#quiz-start').addEventListener('click', startQuiz);
 $('#review-start').addEventListener('click', startReview);
+$('#story-search').addEventListener('input', () => {
+  visibleStories = catalogueBatch;
+  renderStories();
+});
+$('#more-stories').addEventListener('click', () => {
+  const firstNew = $('#story-grid').childElementCount;
+  visibleStories += catalogueBatch;
+  renderStories();
+  $('#story-grid').children[firstNew]?.querySelector('button').focus();
+});
 
 function updateNavigation() {
   const section = location.hash || '#path';
@@ -770,6 +865,19 @@ function updateNavigation() {
 }
 
 const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify });
+for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]) {
+  const filter = elem('button', '', label);
+  filter.type = 'button';
+  filter.dataset.filter = id;
+  filter.setAttribute('aria-pressed', String(id === activeCategory));
+  $('#story-filters').append(filter);
+  if (id === 'all') continue;
+  const option = elem('option', '', label);
+  option.value = id;
+  $('#quiz-category').append(option);
+}
+$('#story-total').textContent = TIL_STORIES.length + ' уроков A1–A2';
+$('#ending-total').textContent = totalEndings + ' концовки';
 window.addEventListener('hashchange', updateNavigation);
 updateNavigation();
 renderStories();
