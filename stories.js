@@ -1,4 +1,4 @@
-'use strict';
+import { EXTRA_STORIES } from './extra-stories.js';
 
 export const TIL_STORIES = [
   {
@@ -210,7 +210,20 @@ export const TIL_STORIES = [
       beginner: { line: ['Қош келдің! Бәрін бірге үйренеміз.', 'Добро пожаловать! Всему научимся вместе.'], end: 'Первый шаг в дебаты' },
       joined: { line: ['Керемет! Келесі кездесуге кел.', 'Класс! Приходи на следующую встречу.'], end: 'Приглашение в клуб' }
     }
-  }
+  },
+  ...EXTRA_STORIES
 ];
 
-export const TIL_CATEGORIES = { daily: 'На каждый день', campus: 'Учёба', city: 'Город' };
+export const TIL_CATEGORIES = {
+  daily: 'На каждый день', campus: 'Учёба', city: 'Город', travel: 'Поездки',
+  leisure: 'Досуг', work: 'Работа'
+};
+
+export const TIL_ROUTE = [
+  { title: 'Первые фразы', level: 'A1', ids: ['coffee', 'campus', 'bakery'] },
+  { title: 'В городе', level: 'A1', ids: ['way', 'market', 'bus'] },
+  { title: 'Время с друзьями', level: 'A2', ids: ['meeting', 'cinema', 'sport'] },
+  { title: 'Учёба и карьера', level: 'A1–A2', ids: ['club', 'library', 'interview'] },
+  { title: 'В пути', level: 'A2', ids: ['station', 'hotel', 'trip'] },
+  { title: 'Решаем вопросы', level: 'A2', ids: ['pharmacy', 'parcel', 'teamwork'] }
+];

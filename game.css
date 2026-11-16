@@ -1,0 +1,91 @@
+.game-board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-block: 4px 16px; }
+.rank-panel, .quest-panel { padding: clamp(14px, 2.5vw, 23px); border-radius: 17px; }
+.rank-panel {
+  display: grid; grid-template-rows: auto 1fr auto auto; align-items: end; gap: 11px;
+  isolation: isolate; position: relative; overflow: hidden; color: #fffdf3;
+  background: radial-gradient(ellipse at top right, #386d51, #1e4635 64%);
+}
+.rank-panel::before, .rank-panel::after {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  width: 83%; height: 118%; top: -33%; right: -40%;
+  border: 1px solid #d8ee9e55; border-radius: 50%; transform: rotate(-40deg);
+}
+.rank-panel::after { transform: rotate(24deg); border-style: dashed; }
+.rank-head { display: grid; grid-template-columns: auto 1fr auto; gap: 11px; align-items: center; }
+.rank-emblem {
+  display: grid; place-items: center; width: 49px; height: 48px; border-radius: 13px;
+  background: var(--lime); color: #284939; transform: rotate(-8deg);
+  font-size: 1.68rem; box-shadow: 0 4px 0 #071a115e;
+}
+.game-label { font-size: .65rem; line-height: 1.4; letter-spacing: .095em; font-weight: 850; }
+.rank-panel .game-label { color: #d2e6b4; }
+.rank-head h3, .quest-head h3 { font-size: clamp(1.18rem, 2.8vw, 1.86rem); line-height: 1.04; letter-spacing: -.045em; }
+.rank-badges { background: #254d3a; color: #f6f8e9; border: 1px solid #9dbca780; border-radius: 8px; padding: 8px; font-size: .7rem; font-weight: 750; white-space: nowrap; }
+.rank-badges:hover { background: #397056; }
+.rank-panel label { color: #e4ebd6; font-size: .77rem; font-weight: 720; }
+.rank-panel progress { width: 100%; height: 9px; appearance: none; border: 0; background: #ffffff30; border-radius: 20px; overflow: hidden; accent-color: var(--lime); }
+.rank-panel progress::-webkit-progress-bar { background: transparent; }
+.rank-panel progress::-webkit-progress-value { background: var(--lime); border-radius: inherit; transition: width .32s ease; }
+.rank-panel progress::-moz-progress-bar { background: var(--lime); border-radius: 20px; }
+.game-next { justify-self: stretch; justify-content: space-between; margin-top: 4px; gap: 8px; text-align: left; }
+.quest-panel { background: #fffdf6; border: 1px solid #d6dfc8; }
+.quest-head { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-bottom: 10px; }
+.quest-panel .game-label { color: #567347; }
+.quest-bonus { padding: 6px 8px; color: #582d48; background: #f3dcf0; border-radius: 7px; font-size: .66rem; font-weight: 850; text-align: center; }
+.quest-bonus[data-earned="true"] { color: #254627; background: #dfefae; animation: reward-in .36s ease both; }
+.quest-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.quest-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 0; }
+.quest-list li + li { border-top: 1px solid var(--line); }
+.quest-list li b { display: block; font-size: .76rem; line-height: 1.2; }
+.quest-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: #ebeadc; color: #36563b; font-size: .9rem; }
+.quest-list li:nth-child(2) .quest-icon { background: #f9e6b3; color: #754915; }
+.quest-list li:nth-child(3) .quest-icon { background: #eae0f8; color: #543e84; }
+.quest-link { display: inline-block; background: transparent; border: 0; padding: 3px 0 0; color: #425f41; font-size: .73rem; line-height: 1.25; font-weight: 720; text-align: left; text-decoration: underline; text-underline-offset: 2px; }
+.quest-link:hover { color: #214b2f; }
+.quest-value { font-size: .66rem; color: #48633f; font-weight: 850; white-space: nowrap; }
+.quest-list li[data-done="true"] .quest-value { color: #285530; }
+.quest-list li[data-done="true"] .quest-icon { background: #dfefae; color: #285530; }
+.catalogue-tools { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 15px; }
+.catalogue-tools .search { width: min(100%, 246px); }
+.catalogue-foot { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-top: 12px; }
+#story-results { color: var(--muted); font-size: .79rem; font-weight: 700; }
+#more-stories[hidden] { display: none; }
+.story-grid .story-card { display: flex; flex-direction: column; }
+.story-grid .card-art { flex: 0 0 auto; }
+.story-grid .card-content { flex: 1; grid-template-rows: auto auto 1fr auto; }
+.card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.card-score { background: #e4efc9; color: #365128; border-radius: 5px; padding: 2px 5px; }
+.card-word { max-width: 78%; text-align: center; overflow-wrap: anywhere; }
+.ending-collection { display: grid; gap: 7px; padding: 10px; background: #f2f3e8; border: 1px solid #e0e5d3; border-radius: 10px; }
+.ending-collection > p { color: #3e6137; font-size: .76rem; font-weight: 820; }
+.ending-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.ending-list li { color: #506456; font-size: .72rem; background: #fffdf6; border-radius: 6px; padding: 4px 6px; }
+.ending-list li[data-earned="true"] { background: #e4efbb; color: #33542e; font-weight: 800; }
+.scene-body .xp-bonus { animation: reward-in .38s ease both; }
+.badge-section { margin-block: 14px; }
+.badge-section h3, .progress-lessons summary { font-size: .91rem; font-weight: 850; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); list-style: none; margin: 8px 0 0; padding: 0; gap: 7px; }
+.badge-grid li { display: flex; align-items: center; gap: 7px; border: 1px solid #e0e5d9; border-radius: 8px; padding: 7px; }
+.badge-grid li[data-earned="true"] { background: #edf4d2; border-color: #dce7b8; }
+.badge-mark { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 7px; background: #e9eee0; color: #486447; font-weight: 850; }
+.badge-grid li[data-earned="true"] .badge-mark { background: var(--lime); color: #284b32; }
+.badge-grid strong, .badge-grid small { display: block; line-height: 1.35; }
+.badge-grid strong { font-size: .76rem; }
+.badge-grid small { color: var(--muted); font-size: .69rem; }
+.progress-lessons { border-block: 1px solid var(--line); margin-bottom: 9px; }
+.progress-lessons summary { color: #385f3c; cursor: pointer; padding: 9px 0; }
+@keyframes reward-in {
+  from { opacity: .72; transform: scale(.94) translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 670px) {
+  .game-board { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .rank-panel { gap: 9px; }
+  .rank-emblem { width: 38px; height: 38px; font-size: 1.3rem; }
+  .rank-head h3, .quest-head h3 { font-size: 1.3rem; }
+  .catalogue-tools .search { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-panel progress::-webkit-progress-value { transition: none; }
+  .quest-bonus[data-earned="true"], .scene-body .xp-bonus { animation: none; }
+}

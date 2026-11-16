@@ -9,6 +9,7 @@
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="game.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -53,9 +54,9 @@
     </section>
 
     <ul class="facts" aria-label="Что есть в Тіл Mix">
-      <li><span class="fact-icon" aria-hidden="true">✦</span><div><b>6 живых историй</b><span>Кафе, универ и весь город</span></div></li>
+      <li><span class="fact-icon" aria-hidden="true">✦</span><div><b id="story-total">Уроки A1–A2</b><span>От пекарни до собеседования</span></div></li>
       <li><span class="fact-icon" aria-hidden="true">ϟ</span><div><b id="streak-text">Серия: 0 дней</b><span>Диалог, тест или повторение</span></div></li>
-      <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="daily-status">Вызов дня</b><button type="button" class="daily-link" id="daily-action">Открыть историю ↗</button></div></li>
+      <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="ending-total">Концовки</b><span>Реплики меняют сюжет</span></div></li>
     </ul>
 
     <section class="learning-path" id="path" aria-labelledby="path-title">
@@ -63,20 +64,43 @@
         <div><p class="eyebrow"><span aria-hidden="true">✳</span> ТВОЙ МАРШРУТ</p><h2 id="path-title">От первой фразы<br>до разговора<span>.</span></h2></div>
         <p id="path-summary" class="path-summary"></p>
       </div>
+      <div class="game-board">
+        <div class="rank-panel">
+          <div class="rank-head">
+            <span class="rank-emblem" aria-hidden="true">✦</span>
+            <div><p id="game-level" class="game-label"></p><h3 id="game-rank"></h3></div>
+            <button class="rank-badges" type="button" data-open-progress>Награды ↗</button>
+          </div>
+          <label for="game-xp" id="game-xp-label"></label>
+          <progress id="game-xp" max="1" value="0"></progress>
+          <button type="button" class="button button-primary game-next" id="game-next"><span id="game-next-text"></span><span aria-hidden="true">↗</span></button>
+        </div>
+        <div class="quest-panel">
+          <div class="quest-head">
+            <div><p class="game-label" id="quest-status"></p><h3>Задания дня</h3></div>
+            <span class="quest-bonus" id="quest-bonus"></span>
+          </div>
+          <ul class="quest-list" aria-label="Ежедневные задания">
+            <li id="quest-story"><span class="quest-icon" aria-hidden="true">◆</span><div><b>История дня</b><button type="button" class="quest-link" id="daily-action"></button></div><span class="quest-value"></span></li>
+            <li id="quest-quiz"><span class="quest-icon" aria-hidden="true">ϟ</span><div><b>Проверка перевода</b><a class="quest-link" href="#practice">Набери 3 из 5 ↗</a></div><span class="quest-value"></span></li>
+            <li id="quest-review"><span class="quest-icon" aria-hidden="true">⧉</span><div><b>Повторение</b><a class="quest-link" href="#review">Повтори 3 разные фразы ↗</a></div><span class="quest-value"></span></li>
+          </ul>
+        </div>
+      </div>
       <ol id="path-steps" aria-label="Этапы обучения"></ol>
     </section>
 
     <section class="catalogue" id="stories" aria-labelledby="stories-title">
       <div class="section-head">
         <div><p class="eyebrow"><span aria-hidden="true">✳</span> ИНТЕРАКТИВНЫЕ ДИАЛОГИ</p><h2 id="stories-title">Выбери ситуацию<span>.</span></h2></div>
-        <div class="filters" role="group" aria-label="Темы историй">
-          <button type="button" data-filter="all" aria-pressed="true">Все</button>
-          <button type="button" data-filter="daily" aria-pressed="false">На каждый день</button>
-          <button type="button" data-filter="campus" aria-pressed="false">Учёба</button>
-          <button type="button" data-filter="city" aria-pressed="false">Город</button>
-        </div>
+      </div>
+      <div class="catalogue-tools">
+        <div class="filters" id="story-filters" role="group" aria-label="Темы историй"></div>
+        <label class="sr-only" for="story-search">Найти урок</label>
+        <input class="search" type="search" id="story-search" placeholder="Найди урок">
       </div>
       <div id="story-grid" class="story-grid"></div>
+      <div class="catalogue-foot"><p id="story-results" role="status"></p><button type="button" class="button button-outline" id="more-stories">Показать ещё ↓</button></div>
     </section>
 
     <section class="review" id="review" aria-labelledby="review-title">
@@ -107,7 +131,7 @@
         <p>Выбери тему и направление перевода. Фразы, в которых ошибёшься, попадут на повторение.</p>
         <div class="quiz-settings">
           <label for="quiz-direction">Направление<select id="quiz-direction"><option value="kk-ru">Қазақша → Русский</option><option value="ru-kk">Русский → Қазақша</option></select></label>
-          <label for="quiz-category">Тема<select id="quiz-category"><option value="all">Все фразы</option><option value="daily">На каждый день</option><option value="campus">Учёба</option><option value="city">Город</option></select></label>
+          <label for="quiz-category">Тема<select id="quiz-category"><option value="all">Все фразы</option></select></label>
         </div>
         <button class="button button-primary" id="quiz-start" type="button">Начать тренировку <span aria-hidden="true">↗</span></button>
       </div>
@@ -213,7 +237,7 @@
   <p class="toast" id="toast" role="status"></p>
   <template id="card-template">
     <article class="story-card">
-      <div class="card-art"><span class="card-index" aria-hidden="true"></span><span class="card-tag"></span><span class="card-word" lang="kk"></span><span class="card-spark" aria-hidden="true">✦</span></div>
+      <div class="card-art"><span class="card-tag"></span><span class="card-word" lang="kk"></span><span class="card-spark" aria-hidden="true">✦</span></div>
       <div class="card-content"><div class="card-meta"></div><h3></h3><p></p><button class="card-action" type="button"><span></span><span aria-hidden="true">↗</span></button></div>
     </article>
   </template>

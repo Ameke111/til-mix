@@ -96,8 +96,6 @@ section { scroll-margin-top: 90px; }
 .facts li div { display: grid; gap: 2px; }
 .facts b { font-size: .86rem; }
 .facts li div > span { font-size: .76rem; color: var(--muted); }
-.daily-link { border: 0; background: none; color: #40632e; text-align: left; padding: 0; font-size: .76rem; font-weight: 800; text-underline-offset: 2px; }
-.daily-link:hover { text-decoration: underline; }
 
 .catalogue, .dictionary { padding-top: 47px; }
 .section-head { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 20px; }
@@ -119,7 +117,6 @@ section { scroll-margin-top: 90px; }
 .card-word { transform: rotate(-9deg); padding: .12em .3em; border: 1px solid currentColor; border-radius: .25em; background: var(--cover); font-weight: 800; color: var(--cover-ink); font-size: clamp(1.6rem, 3.2vw, 3rem); letter-spacing: -.07em; line-height: 1.15; box-shadow: .075em .075em 0 currentColor; transition: transform .25s; }
 .story-card:hover .card-word { transform: rotate(-4deg) scale(1.06); }
 .card-spark { position: absolute; right: 13%; top: 22%; font-size: 25px; }
-.card-index { position: absolute; right: 13px; bottom: 10px; font-size: .68rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .card-tag { position: absolute; top: 11px; left: 11px; color: var(--ink); background: #fffdf5e8; padding: 5px 8px; text-transform: uppercase; border-radius: 6px; font-size: .58rem; font-weight: 800; letter-spacing: .06em; }
 [data-tone="lime"] .card-art { --cover: #dcf28c; --cover-ink: #456116; }
 [data-tone="lilac"] .card-art { --cover: #ded7fa; --cover-ink: #5e4c96; }
@@ -232,13 +229,10 @@ section { scroll-margin-top: 90px; }
 .progress-metrics b { font-size: 1.35rem; color: var(--ink); }
 .activity { border-block: 1px solid var(--line); padding-block: 10px; margin-bottom: 10px; }
 .activity h3 { font-size: .88rem; font-weight: 900; }
-.activity-days, .achievements { padding: 0; margin: 8px 0 0; list-style: none; display: flex; gap: 4px; }
+.activity-days { padding: 0; margin: 8px 0 0; list-style: none; display: flex; gap: 4px; }
 .activity-days li { flex: 1; min-width: 0; text-align: center; padding: 6px 0; background: #eff1e7; border: 1px solid transparent; border-radius: 7px; font-weight: 800; font-size: .72rem; }
 .activity-days [data-active="true"] { background: #dbefad; }
 .activity-days [aria-current="date"] { border-color: #71974d; }
-.achievements { flex-wrap: wrap; }
-.achievements li { color: #5e5b64; background: #eeecef; border-radius: 7px; padding: 4px 7px; font-size: .68rem; font-weight: 800; }
-.achievements li[data-earned="true"] { color: #20462b; background: #e7f2ce; }
 .progress-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 3px; }
 .progress-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); font-size: .85rem; }
 .progress-list .text-button { flex: 0 0 auto; }
@@ -278,7 +272,6 @@ section { scroll-margin-top: 90px; }
   .facts li { flex-direction: column; text-align: center; justify-content: start; gap: 4px; }
   .facts b { font-size: .68rem; }
   .facts li div > span { display: none; }
-  .daily-link { text-align: center; font-size: .64rem; }
   .fact-icon { min-width: 31px; height: 29px; font-size: .98rem; }
   .fact-audio { font-size: .68rem; }
   section { scroll-margin-top: 14px; }
@@ -293,7 +286,6 @@ section { scroll-margin-top: 90px; }
   .card-content h3 { font-size: 1rem; }
   .card-content p { font-size: .72rem; }
   .card-tag { top: 7px; left: 6px; font-size: .54rem; }
-  .card-index { bottom: 6px; right: 6px; font-size: .6rem; }
   .learning-path { margin-top: 20px; }
   .learning-path ol { grid-template-columns: 1fr; gap: 7px; }
   .path-step { grid-template-columns: 40px 1fr; align-items: center; gap: 3px 8px; padding: 8px; }
