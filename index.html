@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="account.css">
   <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="studio.css">
+  <link rel="stylesheet" href="activity.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -20,6 +22,7 @@
       <nav class="nav" aria-label="Основная навигация">
         <a href="#path" aria-current="location">Маршрут</a>
         <a href="#stories">Истории</a>
+        <a href="#studio">Фразы</a>
         <a href="#dictionary">Словарь</a>
         <a href="#practice">Тренировка</a>
       </nav>
@@ -87,6 +90,13 @@
           </ul>
         </div>
       </div>
+      <div class="week-summary" aria-labelledby="week-summary-title">
+        <span class="week-icon" aria-hidden="true">◫</span>
+        <div><h3 id="week-summary-title">Моя неделя</h3><p id="week-summary-count"></p></div>
+        <progress id="week-summary-meter" aria-label="Недельная цель" max="3" value="0"></progress>
+        <a class="text-button" id="week-recommendation" href="#studio"></a>
+        <button class="text-button" type="button" data-open-progress>Календарь ↗</button>
+      </div>
       <ol id="path-steps" aria-label="Этапы обучения"></ol>
     </section>
 
@@ -96,11 +106,32 @@
       </div>
       <div class="catalogue-tools">
         <div class="filters" id="story-filters" role="group" aria-label="Темы историй"></div>
-        <label class="sr-only" for="story-search">Найти урок</label>
-        <input class="search" type="search" id="story-search" placeholder="Найди урок">
+        <div class="catalogue-fields">
+          <label class="sr-only" for="story-search">Найти урок</label>
+          <input class="search" type="search" id="story-search" placeholder="Найди урок">
+          <label class="sr-only" for="story-progress-filter">Прогресс урока</label>
+          <select id="story-progress-filter"><option value="all">Любой прогресс</option><option value="new">Не начаты</option><option value="started">В процессе</option><option value="done">Уже пройдены</option><option value="mastered">Все концовки</option></select>
+        </div>
       </div>
       <div id="story-grid" class="story-grid"></div>
       <div class="catalogue-foot"><p id="story-results" role="status"></p><button type="button" class="button button-outline" id="more-stories">Показать ещё ↓</button></div>
+    </section>
+
+    <section class="studio" id="studio" aria-labelledby="studio-title">
+      <div class="studio-intro">
+        <p class="eyebrow"><span aria-hidden="true">✦</span> ПОРЯДОК СЛОВ</p>
+        <h2 id="studio-title">Собери <br>фразу<span>.</span></h2>
+        <p>Переводи знакомые реплики. Собирай ответ из слов или напечатай его по-казахски.</p>
+        <label for="studio-mode">Режим</label>
+        <select id="studio-mode"><option value="tiles">Собрать из слов</option><option value="typing">Напечатать ответ</option></select>
+        <label for="studio-category">Тема упражнения</label>
+        <select id="studio-category"><option value="all">Любая тема</option></select>
+        <button class="button button-primary" id="studio-start" type="button"><span>Начать</span><span aria-hidden="true">↗</span></button>
+        <p id="studio-record"></p>
+      </div>
+      <div class="studio-stage" id="studio-stage">
+        <div class="studio-preview" aria-hidden="true"><span>Қайда?</span><span>Оқу</span><span>залы</span></div>
+      </div>
     </section>
 
     <section class="review" id="review" aria-labelledby="review-title">
@@ -202,6 +233,7 @@
               <button class="button button-outline" id="retry-sync" type="button" hidden>Объединить с сервером</button>
               <button class="text-button" id="back-to-auth" type="button" hidden>Войти или зарегистрироваться ↗</button>
               <button class="text-button" id="account-logout" type="button" hidden>Выйти из аккаунта</button>
+              <button class="button button-outline" id="open-admin" type="button" hidden>Панель владельца ↗</button>
             </div>
             <details class="profile-danger" id="account-delete" hidden>
               <summary>Удалить аккаунт</summary>
@@ -216,6 +248,17 @@
           <p class="form-status" id="account-status" role="status"></p>
         </div>
       </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog admin-dialog" id="admin-dialog" aria-labelledby="admin-title">
+    <div class="dialog-head"><div><span class="dialog-stage">ПАНЕЛЬ ВЛАДЕЛЬЦА</span><h2 id="admin-title">Обращения</h2></div><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть панель владельца">×</button></div>
+    <div class="admin-body">
+      <div class="admin-metrics"><div><strong id="admin-accounts">—</strong><span>Аккаунты</span></div><div><strong id="admin-open-count">—</strong><span>В очереди</span></div><div><strong id="admin-closed-count">—</strong><span>Закрыто</span></div></div>
+      <div class="admin-controls"><label for="admin-filter">Статус</label><select id="admin-filter"><option value="open">В очереди</option><option value="closed">Закрытые</option></select><button class="button button-outline" id="admin-refresh" type="button">Обновить ↻</button></div>
+      <p class="form-status" id="admin-status" role="status" tabindex="-1"></p>
+      <div id="admin-list" class="admin-list"></div>
+      <button class="button button-outline" id="admin-more" type="button" hidden>Показать ещё ↓</button>
     </div>
   </dialog>
 

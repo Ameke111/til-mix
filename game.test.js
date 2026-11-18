@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor } from './game.js';
+import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
+import { markPractice, recentPractice } from './activity.js';
 
 const day = 20773;
 const phrases = new Set(['Сәлем!', 'Рақмет!', 'Кездескенше!', 'Сау бол!']);
@@ -69,4 +70,32 @@ test('opening all endings grants a single mastery bonus and advances the rank at
   assert.equal(rankFor(50).level, 2);
   assert.equal(rankFor(50).fraction, 0);
   assert.deepEqual(rankFor(1200), { level: 7, name: 'Тіл шебері', next: undefined, fraction: 1 });
+});
+
+test('chapter stars follow the published thresholds and backup merges retain only better scores', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(starsFor), [0, 0, 1, 1, 2, 3]);
+  const progress = legacyState({ chapters: { basics: 4, city: 2, career: 0, travel: 7, bogus: 5 } });
+  const incoming = normalizeGame({ chapters: { basics: 2, city: 5, friends: 1 } }, phrases);
+  mergeGame(progress.game, incoming);
+  mergeGame(progress.game, incoming);
+  assert.deepEqual({ ...progress.game.chapters }, { basics: 4, city: 5, career: 0, friends: 1 });
+  const stats = gameStats(progress, stories);
+  assert.equal(stats.chapterStars, 5);
+  assert.equal(stats.xp, 40);
+});
+
+test('the practice calendar preserves legacy days and merges modes from the same day', () => {
+  const current = normalizeGame({}, phrases);
+  const incoming = normalizeGame({ activity: { [day]: 10, [day - 1]: 21, invalid: 3 } }, phrases);
+  markPractice(current.activity, day, 'story');
+  markPractice(current.activity, day, 'story');
+  mergeGame(current, incoming);
+  mergeGame(current, incoming);
+  const calendar = recentPractice(day, [day - 2], current.activity);
+  assert.equal(calendar.length, 28);
+  assert.deepEqual(calendar.slice(-3), [
+    { date: day - 2, types: [], active: true },
+    { date: day - 1, types: [], active: false },
+    { date: day, types: ['story', 'quiz', 'studio'], active: true }
+  ]);
 });

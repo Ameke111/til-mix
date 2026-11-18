@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "start": "node server.js",
+    "admin": "node admin.js",
     "build": "vite build --base=./",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",

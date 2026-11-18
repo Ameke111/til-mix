@@ -1,0 +1,70 @@
+.week-summary {
+  display: grid; grid-template-columns: auto minmax(130px, 1fr) minmax(72px, .55fr) auto auto;
+  align-items: center; gap: 8px 14px; padding: 8px 14px; margin-bottom: 13px;
+  border: 1px solid #d9e0c7; border-radius: 13px; background: #fbfaef; color: var(--ink);
+}
+.week-icon {
+  display: grid; place-items: center; width: 35px; height: 35px;
+  background: #ded7ee; color: #4c3969; border-radius: 9px; font-size: 1.2rem;
+}
+.week-summary h3, .activity-calendar h3 { font-size: .93rem; letter-spacing: -.02em; }
+.week-summary p, .calendar-legend { color: var(--muted); font-size: .75rem; }
+.week-summary progress { width: 100%; height: 9px; accent-color: #66914d; }
+.week-summary .text-button { color: #375b3b; font-size: .73rem; text-align: left; min-height: 33px; }
+.catalogue-fields { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.catalogue-fields select { padding: 7px 9px; border: 1px solid #ccd6bd; border-radius: 10px; background: #fffdf6; color: var(--ink); font: inherit; font-size: .82rem; }
+.activity-calendar { display: grid; gap: 7px; margin-top: 13px; }
+.calendar-days { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 5px; list-style: none; margin: 0; padding: 0; }
+.calendar-days li {
+  aspect-ratio: 1.17; border-radius: 4px; background: #e9ece2; min-width: 0;
+}
+.calendar-days li[data-intensity="1"] { background: #c8dfa1; }
+.calendar-days li[data-intensity="2"] { background: #a0c276; }
+.calendar-days li[data-intensity="3"] { background: #729953; }
+.calendar-days li[data-intensity="4"] { background: #456f42; }
+.calendar-days li[aria-current="date"] { outline: 2px solid #476053; outline-offset: 1px; }
+.calendar-legend { line-height: 1.4; }
+.studio-input {
+  width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid #ad9ac9;
+  border-radius: 7px; font: inherit; color: #302243; background: #fffdfa;
+}
+.studio-exercise[data-completed="true"] .studio-answer {
+  border-style: solid; border-color: #a0b875; background: #f1f7df;
+  animation: phrase-complete .38s ease both;
+}
+@keyframes phrase-complete {
+  from { transform: translateY(3px); box-shadow: 0 0 0 4px #d6e8a8; }
+  to { transform: none; box-shadow: none; }
+}
+.admin-dialog { width: min(680px, calc(100% - 26px)); }
+.admin-body { display: grid; gap: 12px; padding: clamp(13px, 3vw, 23px); }
+.admin-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.admin-metrics div { display: grid; gap: 2px; background: #e9ecd9; border-radius: 9px; padding: 9px; }
+.admin-metrics strong { font-size: 1.3rem; }
+.admin-metrics span { font-size: .76rem; color: var(--muted); }
+.admin-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 9px; }
+.admin-controls label { font-size: .78rem; font-weight: 850; }
+.admin-controls select {
+  background: #fffdf5; color: var(--ink); font: inherit; font-size: .82rem; min-height: 38px;
+  padding: 5px 9px; border-radius: 8px; border: 1px solid #bac8ae;
+}
+.admin-controls .button { margin-inline-start: auto; }
+.admin-list { display: grid; gap: 8px; }
+.admin-list .admin-entry { display: grid; gap: 8px; padding: 12px; border: 1px solid #dce2d0; border-radius: 10px; background: #fffdf8; }
+.admin-entry > div { display: flex; gap: 6px; flex-wrap: wrap; justify-content: space-between; align-items: baseline; }
+.admin-entry h3 { font-size: .92rem; }
+.admin-entry time { font-size: .73rem; color: var(--muted); }
+.admin-entry p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
+.admin-entry .button, #admin-more { justify-self: start; }
+@media (max-width: 820px) {
+  .week-summary { grid-template-columns: auto 1fr 1fr; gap: 5px 9px; }
+  .week-summary a { grid-column: 2; }
+  .week-summary button { justify-self: end; }
+}
+@media (max-width: 540px) {
+  .week-summary { grid-template-columns: auto minmax(0, 1fr) minmax(52px, .45fr); padding: 8px; }
+  .calendar-days { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .catalogue-fields { width: 100%; }
+  .catalogue-fields select { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { .studio-exercise[data-completed="true"] .studio-answer { animation: none; } }

@@ -1,7 +1,11 @@
 import { TIL_CATEGORIES, TIL_ROUTE, TIL_STORIES } from './stories.js';
 import { duePhrases, localDay, normalizeReview, quizQuestions, scheduleReview, weekDays } from './learning.js';
 import { setupAccount } from './account.js';
-import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor } from './game.js';
+import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
+import { masterStudio } from './studio.js';
+import { setupStudio } from './studio-ui.js';
+import { markPractice } from './activity.js';
+import { activityCalendar, renderWeek } from './activity-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -18,9 +22,10 @@ const lessonOrder = TIL_ROUTE.flatMap(({ ids }) => ids);
 for (const story of TIL_STORIES) {
   for (const scene of Object.values(story.scenes)) {
     for (const [kk, ru] of [scene.line, ...(scene.choices || []).filter((choice) => choice[2])]) {
-      if (!phrases.has(kk)) phrases.set(kk, { kk, ru, categories: [] });
-      const categories = phrases.get(kk).categories;
-      if (!categories.includes(story.category)) categories.push(story.category);
+      if (!phrases.has(kk)) phrases.set(kk, { kk, ru, categories: [], lessons: new Set() });
+      const phrase = phrases.get(kk);
+      if (!phrase.categories.includes(story.category)) phrase.categories.push(story.category);
+      phrase.lessons.add(story.id);
     }
   }
 }
@@ -41,7 +46,8 @@ function readProgress(raw) {
       const story = stories.get(id);
       if (!story || !value || !Object.hasOwn(story.scenes, value.scene)) continue;
       const endings = Array.isArray(value.endings) ? value.endings.filter((key) => Object.hasOwn(story.scenes, key) && story.scenes[key].end) : [];
-      sessions[id] = { scene: value.scene, endings: [...new Set(endings)] };
+      const updated = Number.isSafeInteger(value.updated) && value.updated > 0 && value.updated <= Date.now() ? value.updated : 0;
+      sessions[id] = { scene: value.scene, endings: [...new Set(endings)], updated };
     }
     return {
       sessions,
@@ -100,7 +106,7 @@ function completeEnding(session, key) {
   const day = localDay();
   const before = experience();
   if (!session.endings.includes(key)) session.endings.push(key);
-  recordActivity(day);
+  recordActivity('story', day);
   if (currentStory.id === challenge(day).id && !progress.challengeDays.includes(day)) {
     progress.challengeDays.push(day);
   }
@@ -108,8 +114,14 @@ function completeEnding(session, key) {
   renderRoute();
 }
 
-function recordActivity(day = localDay()) {
+function recordActivity(type, day = localDay()) {
   if (!progress.activeDays.includes(day)) progress.activeDays.push(day);
+  markPractice(progress.game.activity, day, type);
+}
+
+function renderWeekSummary() {
+  const day = localDay();
+  renderWeek(day, progress.activeDays, account.getGoal(), duePhrases(progress.review, day).length);
 }
 
 function renderGame(stats, day) {
@@ -122,10 +134,16 @@ function renderGame(stats, day) {
     ? stats.xp + ' XP · до следующего уровня ещё ' + (rank.next - stats.xp)
     : stats.xp + ' XP · высший уровень';
   const next = $('#game-next');
-  next.dataset.story = lessonOrder.find((id) => !stats.completed.has(id))
+  let resume;
+  for (const id of lessonOrder) {
+    const session = progress.sessions[id];
+    if (!isStoryInProgress(stories.get(id), session)) continue;
+    if (!resume || session.updated > progress.sessions[resume].updated) resume = id;
+  }
+  next.dataset.story = resume || lessonOrder.find((id) => !stats.completed.has(id))
     || lessonOrder.find((id) => !stats.mastered.has(id)) || challenge(day).id;
   const nextSession = progress.sessions[next.dataset.story];
-  $('#game-next-text').textContent = nextSession && nextSession.scene !== 'start' && !stats.completed.has(next.dataset.story)
+  $('#game-next-text').textContent = isStoryInProgress(stories.get(next.dataset.story), nextSession)
     ? 'Продолжить: ' + stories.get(next.dataset.story).title
     : stories.get(next.dataset.story).title;
 
@@ -153,13 +171,16 @@ function renderGame(stats, day) {
 function renderRoute() {
   const stats = gameStats(progress, stories);
   renderGame(stats, localDay());
+  studio.updateSummary();
+  renderWeekSummary();
   $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
   const firstUnfinished = TIL_ROUTE.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
   $('#path-summary').textContent = 'Пройдено ' + stats.completed.size + ' из ' + TIL_STORIES.length + ' уроков';
-  const steps = TIL_ROUTE.map(({ title, level, ids }, index) => {
+  const steps = TIL_ROUTE.map((chapter, index) => {
+    const { id, title, level, ids } = chapter;
     const completed = ids.filter((id) => stats.completed.has(id));
     const next = ids.find((id) => !completed.includes(id)) || ids[0];
-    const item = elem('li');
+    const item = elem('li', 'chapter-card');
     const action = elem('button', 'path-step');
     action.type = 'button';
     action.dataset.story = next;
@@ -175,10 +196,30 @@ function renderRoute() {
     meter.style.setProperty('--fill', completed.length / ids.length * 100 + '%');
     meter.append(elem('i'));
     action.append(header, elem('strong', '', title), elem('span', 'path-next', description), meter);
-    item.append(action);
+    const controlBar = elem('div', 'chapter-actions');
+    const best = progress.game.chapters[id];
+    const stars = starsFor(best);
+    const rating = chapterRating(stars);
+    const checkpoint = button('text-button', best === undefined ? 'Проверка ↗' : best + '/5 · Повторить ↗', () => startChapterQuiz(chapter));
+    checkpoint.setAttribute('aria-label', 'Проверка главы «' + title + '»' + (best === undefined ? '' : '. Лучший результат ' + best + ' из 5'));
+    controlBar.append(rating, checkpoint);
+    item.append(action, controlBar);
     return item;
   });
   $('#path-steps').replaceChildren(...steps);
+}
+
+function chapterRating(count) {
+  const stars = elem('span', 'chapter-stars');
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', count + ' из 3 звёзд');
+  for (let index = 0; index < 3; index++) {
+    const star = elem('span', '', index < count ? '★' : '☆');
+    star.dataset.earned = String(index < count);
+    star.setAttribute('aria-hidden', 'true');
+    stars.append(star);
+  }
+  return stars;
 }
 
 function save() {
@@ -206,6 +247,7 @@ function swapProgress(raw) {
   reviewSession = undefined;
   $('#quiz').replaceChildren(quizPlaceholder.cloneNode(true));
   $('#quiz-start').firstChild.textContent = 'Начать тренировку ';
+  studio.reset();
   renderStories();
   renderDictionary();
   renderRoute();
@@ -216,8 +258,10 @@ function mergeProgress(raw) {
   const other = readProgress(raw);
   for (const [id, session] of Object.entries(other.sessions)) {
     const current = progress.sessions[id];
-    if (current) current.endings = [...new Set([...current.endings, ...session.endings])];
-    else progress.sessions[id] = session;
+    if (current) {
+      const latest = session.updated > current.updated ? session : current;
+      progress.sessions[id] = { ...latest, endings: [...new Set([...current.endings, ...session.endings])] };
+    } else progress.sessions[id] = session;
   }
   for (const phrase of other.favorites) progress.favorites.add(phrase);
   progress.bestQuiz = Math.max(progress.bestQuiz, other.bestQuiz);
@@ -327,12 +371,26 @@ function audioButton(kk, slow = false) {
 
 window.speechSynthesis?.getVoices();
 
+function isStoryInProgress(story, session) {
+  return Boolean(session && session.scene !== 'start' && !story.scenes[session.scene].end);
+}
+
 function renderStories() {
   const fragment = document.createDocumentFragment();
   const query = $('#story-search').value.trim().toLowerCase();
+  const filter = $('#story-progress-filter').value;
+  const meetsProgress = (story) => {
+    const session = progress.sessions[story.id];
+    if (filter === 'started') return isStoryInProgress(story, session);
+    if (filter === 'new') return !session?.endings.length && !isStoryInProgress(story, session);
+    if (filter === 'done') return Boolean(session?.endings.length);
+    if (filter === 'mastered') return session?.endings.length === story.endingCount;
+    return true;
+  };
   const matches = lessonOrder.map((id) => stories.get(id)).filter((story) =>
     (activeCategory === 'all' || story.category === activeCategory)
     && (story.title + ' ' + story.word + ' ' + story.description).toLowerCase().includes(query)
+    && meetsProgress(story)
   );
   const page = matches.slice(0, visibleStories);
   for (const [index, story] of page.entries()) {
@@ -363,7 +421,7 @@ function renderStories() {
 }
 
 function sessionFor(story) {
-  progress.sessions[story.id] ||= { scene: 'start', endings: [] };
+  progress.sessions[story.id] ||= { scene: 'start', endings: [], updated: 0 };
   return progress.sessions[story.id];
 }
 
@@ -375,7 +433,10 @@ function openStory(id, trigger, fromDemo = false) {
   endingReward = 0;
   const session = sessionFor(currentStory);
   if (currentStory.scenes[session.scene].end) session.scene = 'start';
-  if (fromDemo && session.scene === 'start') session.scene = 'latte';
+  if (fromDemo && session.scene === 'start') {
+    session.scene = 'latte';
+    session.updated = Date.now();
+  }
   save();
   $('#story-title').textContent = currentStory.title;
   $('#story-share-link').hidden = true;
@@ -386,7 +447,9 @@ function openStory(id, trigger, fromDemo = false) {
 }
 
 function restartStory() {
-  sessionFor(currentStory).scene = 'start';
+  const session = sessionFor(currentStory);
+  session.scene = 'start';
+  session.updated = Date.now();
   feedback = undefined;
   endingReward = 0;
   stopSpeech();
@@ -446,6 +509,11 @@ function renderScene(focus = false, focusIndex) {
     const next = lessonOrder.slice(lessonOrder.indexOf(currentStory.id) + 1).find((id) => !progress.sessions[id]?.endings.length)
       || lessonOrder.find((id) => !progress.sessions[id]?.endings.length);
     if (next) actions.append(button('button button-primary', 'Следующий урок ↗', () => openStory(next, lastStoryButton)));
+    actions.append(button('button button-outline', 'Фразы из урока ↗', () => {
+      const lesson = currentStory.id;
+      storyDialog.addEventListener('close', () => studio.startLesson(lesson), { once: true });
+      storyDialog.close();
+    }));
     actions.append(button('button ' + (next ? 'button-outline' : 'button-primary'), 'Другая ветка ↺', restartStory));
     panel.append(actions);
   } else {
@@ -457,6 +525,7 @@ function renderScene(focus = false, focusIndex) {
         if (next) {
           addToReview(kk);
           session.scene = next;
+          session.updated = Date.now();
           if (currentStory.scenes[next].end) completeEnding(session, next);
           save();
         }
@@ -549,6 +618,7 @@ function updateReviewButton(el, kk) {
 
 function renderReviewSummary(message = '') {
   const count = duePhrases(progress.review, localDay()).length;
+  renderWeekSummary();
   const start = $('#review-start');
   start.disabled = count === 0 && !reviewSession;
   start.firstChild.textContent = reviewSession ? 'Начать заново ' : 'Начать повторение ';
@@ -580,7 +650,6 @@ function renderReviewCard() {
   const content = $('#review-content');
   if (!kk) {
     const { graded: total, earned } = reviewSession;
-    if (total) recordActivity();
     reviewSession = undefined;
     renderRoute();
     save();
@@ -616,7 +685,7 @@ function renderReviewCard() {
         reviewSession.index++;
         reviewSession.graded++;
         reviewSession.revealed = false;
-        recordActivity(day);
+        recordActivity('review', day);
         save();
         renderRoute();
         renderReviewCard();
@@ -642,9 +711,22 @@ function shuffle(items) {
 function startQuiz() {
   const direction = $('#quiz-direction').value;
   const category = $('#quiz-category').value;
-  const questions = quizQuestions([...phrases.values()], { direction, category, size: 5 }, shuffle);
-  quiz = { questions, direction, index: 0, score: 0, mistakes: 0 };
-  $('#quiz-start').firstChild.textContent = 'Начать заново ';
+  launchQuiz({ direction, category });
+}
+
+function startChapterQuiz(chapter) {
+  location.hash = '#practice';
+  launchQuiz({
+    direction: 'ru-kk', category: 'all', chapter,
+    eligible: (phrase) => chapter.ids.some((id) => phrase.lessons.has(id))
+  });
+}
+
+function launchQuiz({ direction, category, eligible, chapter }) {
+  stopSpeech();
+  const questions = quizQuestions([...phrases.values()], { direction, category, eligible, size: 5 }, shuffle);
+  quiz = { questions, direction, chapter, index: 0, score: 0, mistakes: 0 };
+  $('#quiz-start').firstChild.textContent = chapter ? 'Начать обычный тест ' : 'Начать заново ';
   renderQuiz();
   $('#quiz').scrollIntoView({ block: 'nearest' });
 }
@@ -654,17 +736,28 @@ function renderQuiz() {
   const step = elem('p', 'quiz-step', quiz.index < quiz.questions.length ? 'ВОПРОС ' + (quiz.index + 1) + ' ИЗ ' + quiz.questions.length : 'ТРЕНИРОВКА ЗАВЕРШЕНА');
   step.tabIndex = -1;
   card.append(step);
+  if (quiz.chapter) card.append(elem('p', 'chapter-quiz-name', 'Проверка главы «' + quiz.chapter.title + '»'));
   const question = quiz.questions[quiz.index];
   if (!question) {
     const before = experience();
     if (quiz.questions.length === 5) {
       progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
       passDailyQuiz(progress.game, localDay(), quiz.score);
+      if (quiz.chapter) {
+        const { id } = quiz.chapter;
+        progress.game.chapters[id] = Math.max(progress.game.chapters[id] ?? 0, quiz.score);
+      }
     }
-    if (quiz.questions.length) recordActivity();
+    if (quiz.questions.length) recordActivity('quiz');
     renderRoute();
     save();
     card.append(elem('p', 'phrase-text', 'Твой результат — ' + quiz.score + ' из ' + quiz.questions.length));
+    if (quiz.chapter) {
+      const score = progress.game.chapters[quiz.chapter.id] ?? 0;
+      const result = elem('p', 'chapter-quiz-result', 'Рекорд главы: ' + score + '/5');
+      result.prepend(chapterRating(starsFor(score)));
+      card.append(result);
+    }
     const earned = experience() - before;
     if (earned) card.append(elem('p', 'xp-bonus', '+' + earned + ' XP'));
     if (quiz.mistakes) {
@@ -672,7 +765,9 @@ function renderQuiz() {
       recap.href = '#review';
       card.append(recap);
     }
-    card.append(button('button button-outline', 'Новые вопросы', startQuiz));
+    const chapter = quiz.chapter;
+    card.append(button('button button-outline', chapter ? 'Повторить проверку' : 'Новые вопросы',
+      chapter ? () => startChapterQuiz(chapter) : startQuiz));
   } else {
     const prompt = quiz.direction === 'ru-kk' ? elem('p', 'phrase-text', question.prompt) : kazakh('p', 'phrase-text', question.prompt);
     card.append(prompt);
@@ -716,6 +811,7 @@ function openProgress() {
   for (const [number, title] of [
     [stats.completed.size + '/' + TIL_STORIES.length, 'Истории'],
     [stats.endings + '/' + totalEndings, 'Концовки'],
+    [stats.chapterStars + '/' + (TIL_ROUTE.length * 3), 'Звёзды глав'],
     [stats.xp + ' XP', 'Опыт']
   ]) {
     const metric = elem('div');
@@ -739,6 +835,7 @@ function openProgress() {
     calendar.append(item);
   }
   activity.append(calendar);
+  activity.append(activityCalendar(elem, day, progress.activeDays, progress.game.activity));
   const badgeSection = elem('section', 'badge-section');
   const badges = elem('ul', 'badge-grid');
   const badgeGoals = [
@@ -747,6 +844,9 @@ function openProgress() {
     ['↗', 'Искатель', 'Заверши 6 разных уроков', stats.completed.size >= 6],
     ['⧉', 'Память в форме', 'Повтори карточки 20 раз', reviewedCards >= 20],
     ['ϟ', 'Без ошибок', 'Набери 5 из 5 в тесте', progress.bestQuiz === 5],
+    ['Ә', 'Слово за словом', 'Собери 12 разных фраз без подсказок', progress.game.studio.length >= 12],
+    ['Қ', 'Пишу по-казахски', 'Напечатай 12 фраз без подсказок', progress.game.writing.length >= 12],
+    ['★', 'Маршрут на отлично', 'Собери три звезды в каждой главе', stats.chapterStars === TIL_ROUTE.length * 3],
     ['☀', 'Ударный день', 'Выполни все три задания дня', stats.perfectDays > 0],
     ['✳', 'Полный маршрут', 'Заверши все уроки', stats.completed.size === TIL_STORIES.length]
   ];
@@ -797,6 +897,7 @@ document.addEventListener('click', (event) => {
 });
 
 storyDialog.addEventListener('close', () => {
+  renderRoute();
   stopSpeech();
   $('#story-notice').textContent = '';
   renderStories();
@@ -849,6 +950,10 @@ $('#story-search').addEventListener('input', () => {
   visibleStories = catalogueBatch;
   renderStories();
 });
+$('#story-progress-filter').addEventListener('change', () => {
+  visibleStories = catalogueBatch;
+  renderStories();
+});
 $('#more-stories').addEventListener('click', () => {
   const firstNew = $('#story-grid').childElementCount;
   visibleStories += catalogueBatch;
@@ -864,7 +969,23 @@ function updateNavigation() {
   }
 }
 
-const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify });
+const studio = setupStudio({
+  elem, button, kazakh, audioButton, stopSpeech, shuffle,
+  readSolved: (mode) => mode === 'typing' ? progress.game.writing : progress.game.studio,
+  onMiss(phrase) {
+    addToReview(phrase, true);
+    save();
+  },
+  onSolve(id, clean, mode) {
+    const solved = mode === 'typing' ? progress.game.writing : progress.game.studio;
+    const reward = masterStudio(solved, id, clean, mode);
+    recordActivity('studio');
+    renderRoute();
+    save();
+    return reward;
+  }
+});
+const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange: renderWeekSummary });
 for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]) {
   const filter = elem('button', '', label);
   filter.type = 'button';

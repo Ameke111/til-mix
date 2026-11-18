@@ -1,10 +1,10 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
-import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import { defaultDatabase, openDatabase } from './database.js';
 
 const keyFor = promisify(scrypt);
 const hashOptions = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
@@ -96,7 +96,7 @@ function validationHeaders(res) {
 
 function safeProgress(data) {
   if (!data || Array.isArray(data) || typeof data !== 'object') throw invalid('Формат прогресса не поддерживается.');
-  const subset = Object.fromEntries(['sessions', 'favorites', 'bestQuiz', 'translated', 'activeDays', 'challengeDays', 'review']
+  const subset = Object.fromEntries(['sessions', 'favorites', 'bestQuiz', 'translated', 'activeDays', 'challengeDays', 'review', 'game']
     .filter((key) => Object.hasOwn(data, key)).map((key) => [key, data[key]]));
   const encoded = JSON.stringify(subset);
   if (Buffer.byteLength(encoded) > 96 * 1024) throw new RequestError(413, 'too_large', 'Файл прогресса слишком большой.');
@@ -124,25 +124,7 @@ function createThrottle() {
 export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origin = 'http://127.0.0.1:4173' } = {}) {
   const publicOrigin = new URL(origin).origin;
   const secure = publicOrigin.startsWith('https:');
-  const db = new DatabaseSync(dbPath);
-  db.exec(`
-    PRAGMA foreign_keys = ON;
-    CREATE TABLE IF NOT EXISTS accounts (
-      id INTEGER PRIMARY KEY, login TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
-      salt TEXT NOT NULL, password_hash TEXT NOT NULL, weekly_goal INTEGER NOT NULL DEFAULT 3,
-      progress TEXT NOT NULL DEFAULT '{}', progress_rev INTEGER NOT NULL DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS sessions (
-      digest TEXT PRIMARY KEY, account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-      expires INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS sessions_expires ON sessions(expires);
-    CREATE TABLE IF NOT EXISTS feedback (
-      id INTEGER PRIMARY KEY, account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-      category TEXT NOT NULL, message TEXT NOT NULL, created INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS feedback_owner ON feedback(account_id, created);
-  `);
+  const db = openDatabase(dbPath);
   const q = (sql) => db.prepare(sql);
   const fetchLogin = q('SELECT * FROM accounts WHERE login = ?');
   const fetchAccount = q('SELECT * FROM accounts WHERE id = ?');
@@ -173,7 +155,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
 
   function expose(account) {
     return {
-      user: { login: account.login, name: account.name, weeklyGoal: account.weekly_goal },
+      user: { login: account.login, name: account.name, weeklyGoal: account.weekly_goal, ...(account.admin ? { admin: true } : {}) },
       progress: JSON.parse(account.progress),
       revision: account.progress_rev
     };
@@ -191,7 +173,36 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
     });
   }
 
-  async function serveApi(req, res, path) {
+  async function serveAdmin(req, res, url, account) {
+    if (!account.admin) throw new RequestError(403, 'admin_required', 'Этот раздел доступен владельцу сайта.');
+    if (req.method === 'GET' && url.pathname === '/api/admin/feedback') {
+      const state = url.searchParams.get('state') ?? 'open';
+      const before = url.searchParams.has('before') ? Number(url.searchParams.get('before')) : Number.MAX_SAFE_INTEGER;
+      if (!['open', 'closed'].includes(state) || !Number.isSafeInteger(before) || before < 1) {
+        throw invalid('Некорректный фильтр обращений.');
+      }
+      expireNotes.run(Date.now() - 90 * 86400000);
+      const rows = q('SELECT id,category,message,created,state FROM feedback WHERE state = ? AND id < ? ORDER BY id DESC LIMIT 21')
+        .all(state, before);
+      const next = rows.length > 20 ? rows[19].id : null;
+      const counts = q("SELECT count(*) FILTER (WHERE state = 'open') AS open, count(*) FILTER (WHERE state = 'closed') AS closed FROM feedback").get();
+      return reply(res, 200, { entries: rows.slice(0, 20), next, counts, accounts: q('SELECT count(*) AS total FROM accounts').get().total });
+    }
+    const id = Number(url.pathname.match(/^\/api\/admin\/feedback\/(\d+)$/)?.[1]);
+    if (req.method !== 'PATCH' || !Number.isSafeInteger(id) || id < 1) {
+      throw new RequestError(404, 'not_found', 'Такой страницы нет.');
+    }
+    const { state } = await jsonBody(req);
+    if (!['open', 'closed'].includes(state)) throw invalid('Выбери допустимый статус обращения.');
+    if (!fetchAccount.get(account.id)?.admin) throw new RequestError(403, 'admin_required', 'Доступ владельца отозван.');
+    const updated = q('UPDATE feedback SET state = ? WHERE id = ? AND created > ?')
+      .run(state, id, Date.now() - 90 * 86400000);
+    if (!updated.changes) throw new RequestError(404, 'not_found', 'Обращение больше недоступно.');
+    return reply(res, 200, { id, state });
+  }
+
+  async function serveApi(req, res, url) {
+    const path = url.pathname;
     if (!['GET', 'HEAD'].includes(req.method) && req.headers.origin !== publicOrigin) {
       throw new RequestError(403, 'origin', 'Открой форму с адреса этого приложения.');
     }
@@ -228,6 +239,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
       return reply(res, 200, { user: null }, { 'Set-Cookie': expiredCookie(secure) });
     }
     if (!account) throw loginRequired();
+    if (path.startsWith('/api/admin/')) return serveAdmin(req, res, url, account);
     if (method === 'PATCH' && path === '/api/account') {
       const body = await jsonBody(req);
       const goal = body.weeklyGoal;
@@ -252,7 +264,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
     }
     if (path === '/api/feedback' && method === 'GET') {
       expireNotes.run(Date.now() - 90 * 86400000);
-      const entries = q('SELECT id,category,message,created FROM feedback WHERE account_id = ? ORDER BY id DESC LIMIT 20').all(account.id);
+      const entries = q('SELECT id,category,message,created,state FROM feedback WHERE account_id = ? ORDER BY id DESC LIMIT 20').all(account.id);
       return reply(res, 200, { entries });
     }
     if (path === '/api/feedback' && method === 'POST') {
@@ -275,9 +287,10 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
     validationHeaders(res);
     if (secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     try {
-      const path = new URL(req.url, publicOrigin).pathname;
+      const url = new URL(req.url, publicOrigin);
+      const path = url.pathname;
       if (path.startsWith('/api/')) {
-        await serveApi(req, res, path);
+        await serveApi(req, res, url);
         return;
       }
       if (req.method !== 'GET' && req.method !== 'HEAD') throw new RequestError(405, 'method', 'Метод не поддерживается.');
@@ -312,7 +325,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     throw new Error('A non-loopback server requires TIL_ORIGIN with HTTPS and a TLS reverse proxy.');
   }
   const root = dirname(fileURLToPath(import.meta.url));
-  const dbPath = resolve(process.env.TIL_DB || resolve(root, '.til-data', 'til-mix.sqlite'));
+  const dbPath = process.env.TIL_DB ? resolve(process.env.TIL_DB) : defaultDatabase;
   mkdirSync(dirname(dbPath), { recursive: true });
   createTilServer({ dbPath, origin, staticDir: resolve(root, 'dist') })
     .listen(port, host, () => console.log('Тіл Mix: ' + origin));

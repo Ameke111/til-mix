@@ -3,6 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { DatabaseSync } from 'node:sqlite';
 import { createTilServer } from './server.js';
 
 const origin = 'http://127.0.0.1:4173';
@@ -61,7 +63,16 @@ test('progress and feedback are isolated per account and stale revisions do not 
   t.after(close);
   const first = (await register(send, 'one')).cookie;
   const second = (await register(send, 'two')).cookie;
-  const savedProgress = { bestQuiz: 4, favorites: ['Сәлем!'] };
+  const savedProgress = {
+    bestQuiz: 4,
+    favorites: ['Сәлем!'],
+    game: {
+      days: { 20773: 1 },
+      chapters: { city: 4 },
+      review: { day: 20773, reviewed: ['Сәлем!'] },
+      studio: ['coffee-order']
+    }
+  };
   const firstSave = await send('progress', { method: 'PUT', cookie: first, body: { revision: 0, progress: savedProgress } });
   assert.deepEqual(await firstSave.json(), { revision: 1 });
   const conflict = await send('progress', { method: 'PUT', cookie: first, body: { revision: 0, progress: { bestQuiz: 0 } } });
@@ -100,4 +111,65 @@ test('account survives restart, sets Secure when HTTPS is configured and can be 
   assert.deepEqual(await (await instance.send('account', { cookie })).json(), { user: null });
   const retry = await instance.send('login', { method: 'POST', body: { login: 'persistent', password: passphrase } });
   assert.equal(retry.status, 401);
+});
+
+test('owner-only triage migrates an older database, preserves notes and allows immediate revocation', async (t) => {
+  const folder = await mkdtemp(join(tmpdir(), 'til-mix-admin-'));
+  const path = join(folder, 'test.sqlite');
+  const legacy = new DatabaseSync(path);
+  legacy.exec(`
+    CREATE TABLE accounts (
+      id INTEGER PRIMARY KEY, login TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+      salt TEXT NOT NULL, password_hash TEXT NOT NULL, weekly_goal INTEGER NOT NULL DEFAULT 3,
+      progress TEXT NOT NULL DEFAULT '{}', progress_rev INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE feedback (
+      id INTEGER PRIMARY KEY, account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      category TEXT NOT NULL, message TEXT NOT NULL, created INTEGER NOT NULL
+    );
+    CREATE INDEX feedback_owner ON feedback(account_id, created);
+    INSERT INTO accounts(login,name,salt,password_hash) VALUES ('legacy','Предыдущий ученик','','');
+  `);
+  legacy.prepare('INSERT INTO feedback(account_id,category,message,created) VALUES(1,?,?,?)')
+    .run('idea', 'Старое обращение', Date.now());
+  legacy.close();
+
+  const { send, close } = await start(path);
+  t.after(async () => {
+    await close();
+    await rm(folder, { force: true, recursive: true });
+  });
+
+  const owner = (await register(send, 'owner')).cookie;
+  const learner = (await register(send, 'learner')).cookie;
+  assert.equal((await send('admin/feedback')).status, 401);
+  const forged = await send('account', { method: 'PATCH', cookie: learner, body: { name: 'Ученик', weeklyGoal: 3, admin: true } });
+  assert.equal((await forged.json()).user.admin, undefined);
+  assert.equal((await send('admin/feedback', { cookie: learner })).status, 403);
+
+  const changeRole = (operation) => {
+    const result = spawnSync(process.execPath, ['admin.js', operation, 'owner'], { env: { ...process.env, TIL_DB: path }, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  changeRole('grant');
+  assert.equal((await (await send('account', { cookie: owner })).json()).user.admin, true);
+  const note = await send('feedback', { method: 'POST', cookie: learner, body: { category: 'lesson', message: 'Уточнение в первом диалоге.' } });
+  assert.equal(note.status, 201);
+  const { id } = await note.json();
+  const incoming = await (await send('admin/feedback', { cookie: owner })).json();
+  assert.deepEqual(incoming.counts, { open: 2, closed: 0 });
+  assert.equal(incoming.accounts, 3);
+  assert.equal(incoming.entries[1].message, 'Старое обращение');
+  assert.equal(incoming.entries[1].state, 'open');
+  assert.ok(!Object.hasOwn(incoming.entries[0], 'account_id'));
+  assert.equal((await send('admin/feedback/' + id, { method: 'PATCH', cookie: learner, body: { state: 'closed' } })).status, 403);
+  assert.equal((await send('admin/feedback/' + id, { method: 'PATCH', cookie: owner, originHeader: 'https://example.org', body: { state: 'closed' } })).status, 403);
+  assert.equal((await send('admin/feedback/' + id, { method: 'PATCH', cookie: owner, body: { state: 'invalid' } })).status, 400);
+  assert.equal((await send('admin/feedback/' + id, { method: 'PATCH', cookie: owner, body: { state: 'closed' } })).status, 200);
+  assert.equal((await (await send('feedback', { cookie: learner })).json()).entries[0].state, 'closed');
+  const completed = await (await send('admin/feedback?state=closed', { cookie: owner })).json();
+  assert.deepEqual(completed.entries.map((entry) => entry.id), [id]);
+  assert.equal((await send('admin/feedback/' + id, { method: 'PATCH', cookie: owner, body: { state: 'open' } })).status, 200);
+  changeRole('revoke');
+  assert.equal((await send('admin/feedback', { cookie: owner })).status, 403);
 });

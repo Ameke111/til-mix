@@ -1,3 +1,7 @@
+import { readStudio, studioXp } from './studio.js';
+import { TIL_ROUTE } from './stories.js';
+import { readActivity } from './activity.js';
+
 const ranks = [
   ['Новичок', 0], ['Собеседник', 50], ['Искатель', 120], ['Знаток города', 230],
   ['Путешественник', 380], ['Мастер диалогов', 560], ['Тіл шебері', 800]
@@ -5,6 +9,11 @@ const ranks = [
 const reviewTarget = 3;
 const quizFlag = 1;
 const reviewFlag = 2;
+const starThresholds = [2, 4, 5];
+
+export function starsFor(score) {
+  return starThresholds.filter((threshold) => score >= threshold).length;
+}
 
 function validDay(day) {
   return Number.isSafeInteger(day) && day > 0;
@@ -22,10 +31,21 @@ export function normalizeGame(raw, phrases) {
     ? { day, reviewed: [...new Set(reviewed.filter((phrase) => phrases.has(phrase)))].slice(0, reviewTarget) }
     : { day: 0, reviewed: [] };
   if (pending.reviewed.length === reviewTarget) days[day] = (days[day] ?? 0) | reviewFlag;
-  return { days, review: pending };
+  const chapters = Object.create(null);
+  for (const { id } of TIL_ROUTE) {
+    const score = raw?.chapters?.[id];
+    if (Number.isInteger(score) && score >= 0 && score <= 5) chapters[id] = score;
+  }
+  return { days, review: pending, chapters, studio: readStudio(raw?.studio), writing: readStudio(raw?.writing), activity: readActivity(raw?.activity) };
 }
 
 export function mergeGame(current, incoming) {
+  current.studio = [...new Set([...current.studio, ...incoming.studio])];
+  current.writing = [...new Set([...current.writing, ...incoming.writing])];
+  for (const [day, flags] of Object.entries(incoming.activity)) current.activity[day] = (current.activity[day] ?? 0) | flags;
+  for (const [id, score] of Object.entries(incoming.chapters)) {
+    current.chapters[id] = Math.max(current.chapters[id] ?? 0, score);
+  }
   for (const [day, flags] of Object.entries(incoming.days)) {
     current.days[day] = (current.days[day] ?? 0) | flags;
   }
@@ -67,7 +87,9 @@ export function gameStats(progress, stories) {
     if (session.endings.length === stories.get(id).endingCount) mastered.add(id);
   }
   const challengeDays = new Set(progress.challengeDays);
-  let xp = 10 * endings + 15 * mastered.size + 5 * challengeDays.size + 2 * progress.bestQuiz;
+  const chapterStars = Object.values(progress.game.chapters).reduce((total, score) => total + starsFor(score), 0);
+  let xp = 10 * endings + 15 * mastered.size + 5 * challengeDays.size + 2 * progress.bestQuiz
+    + studioXp(progress.game.studio, progress.game.writing) + 5 * chapterStars;
   let perfectDays = 0;
   for (const [date, flags] of Object.entries(progress.game.days)) {
     xp += 5 * (Boolean(flags & quizFlag) + Boolean(flags & reviewFlag));
@@ -76,7 +98,7 @@ export function gameStats(progress, stories) {
       perfectDays++;
     }
   }
-  return { completed, mastered, endings, xp, perfectDays };
+  return { completed, mastered, endings, xp, perfectDays, chapterStars };
 }
 
 export function rankFor(xp) {
