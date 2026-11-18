@@ -1,0 +1,5 @@
+# Озвучка для аудирования
+
+Казахские реплики из сценариев Тіл Mix озвучены синтетическими голосами №0 и №2 модели Piper `kk_KZ-issai-high`. Источник голоса — [KazakhTTS и KazakhTTS2 от ISSAI](https://github.com/IS2AI/Kazakh_TTS). Атрибуция и условия [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) указаны в [карточке модели](https://huggingface.co/rhasspy/piper-voices/blob/main/kk/kk_KZ/issai/high/MODEL_CARD). Реплики сгенерированы и сохранены как монофонические WAV. Разметка учебных вариантов хранится в `listening.js`.
+
+Для пересборки скачать [модель и её .onnx.json](https://huggingface.co/rhasspy/piper-voices/tree/main/kk/kk_KZ/issai/high), установить `piper-tts==1.4.2` в отдельное Python-окружение и из корня проекта выполнить `python audio/generate.py <путь-к-kk_KZ-issai-high.onnx>`. SHA-256 использованной модели `4dee767c893e8535da821447d12cb030e3569e11254c14030a1da5d8b2222c16`. В рабочую сборку входят только записи. На телефоне дополнительные пакеты и голосовые движки не нужны.

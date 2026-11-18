@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
+import { countReview, dailyTasks, gameStats, masterRecording, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
 import { markPractice, recentPractice } from './activity.js';
 
 const day = 20773;
@@ -86,7 +86,7 @@ test('chapter stars follow the published thresholds and backup merges retain onl
 
 test('the practice calendar preserves legacy days and merges modes from the same day', () => {
   const current = normalizeGame({}, phrases);
-  const incoming = normalizeGame({ activity: { [day]: 10, [day - 1]: 21, invalid: 3 } }, phrases);
+  const incoming = normalizeGame({ activity: { [day]: 26, [day - 1]: 32, invalid: 3 } }, phrases);
   markPractice(current.activity, day, 'story');
   markPractice(current.activity, day, 'story');
   mergeGame(current, incoming);
@@ -96,6 +96,17 @@ test('the practice calendar preserves legacy days and merges modes from the same
   assert.deepEqual(calendar.slice(-3), [
     { date: day - 2, types: [], active: true },
     { date: day - 1, types: [], active: false },
-    { date: day, types: ['story', 'quiz', 'studio'], active: true }
+    { date: day, types: ['story', 'quiz', 'studio', 'listening'], active: true }
   ]);
+});
+
+test('listening XP survives backup merges and is awarded only once per recording', () => {
+  const progress = legacyState();
+  assert.equal(masterRecording(progress.game, 'bike-helmet'), 2);
+  assert.equal(masterRecording(progress.game, 'bike-helmet'), 0);
+  const incoming = normalizeGame({ listening: ['bike-helmet', 'bike-hours', 'unknown'] }, phrases);
+  mergeGame(progress.game, incoming);
+  mergeGame(progress.game, incoming);
+  assert.deepEqual(progress.game.listening, ['bike-helmet', 'bike-hours']);
+  assert.equal(gameStats(progress, stories).xp, 19);
 });

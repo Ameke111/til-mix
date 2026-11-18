@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -11,18 +11,18 @@ const origin = 'http://127.0.0.1:4173';
 const passphrase = 'учебная фраза для проверки';
 const candidate = (login) => ({ login, name: 'Тестовый ученик', password: passphrase, accept: true });
 
-async function start(dbPath, requestOrigin = origin, demo = false) {
-  const server = createTilServer({ dbPath, origin: requestOrigin, demo });
+async function start(dbPath, requestOrigin = origin, demo = false, staticDir) {
+  const server = createTilServer({ dbPath, origin: requestOrigin, demo, staticDir });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const base = 'http://127.0.0.1:' + server.address().port + '/api/';
+  const url = 'http://127.0.0.1:' + server.address().port;
   const send = (path, { method = 'GET', body, cookie, originHeader = requestOrigin } = {}) => {
     const headers = { Origin: originHeader };
     if (cookie) headers.Cookie = cookie;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    return fetch(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    return fetch(url + '/api/' + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   };
   const close = () => new Promise((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
-  return { send, close };
+  return { send, close, url };
 }
 
 async function register(send, login) {
@@ -56,6 +56,30 @@ test('registration validates controls, revokes sessions on logout and rejects wr
   assert.match(loggedOut.headers.get('set-cookie'), /Max-Age=0/);
   const rejected = await send('feedback', { cookie });
   assert.equal(rejected.status, 401);
+});
+
+test('audio uses the correct MIME type and serves byte ranges for mobile playback', async (t) => {
+  const fixtures = await mkdtemp(join(tmpdir(), 'til-audio-'));
+  await mkdir(join(fixtures, 'assets'));
+  await copyFile(new URL('./audio/bike-helmet.wav', import.meta.url), join(fixtures, 'assets', 'bike-helmet.wav'));
+  const { url, close } = await start(undefined, origin, false, fixtures);
+  t.after(async () => {
+    await close();
+    await rm(fixtures, { recursive: true, force: true });
+  });
+  const asset = url + '/assets/bike-helmet.wav';
+  const head = await fetch(asset, { method: 'HEAD' });
+  assert.equal(head.status, 200);
+  assert.equal(head.headers.get('content-type'), 'audio/wav');
+  assert.equal(head.headers.get('accept-ranges'), 'bytes');
+  const length = Number(head.headers.get('content-length'));
+  const first = await fetch(asset, { headers: { Range: 'bytes=0-1' } });
+  assert.equal(first.status, 206);
+  assert.equal(first.headers.get('content-range'), 'bytes 0-1/' + length);
+  assert.equal(await first.text(), 'RI');
+  const invalid = await fetch(asset, { headers: { Range: 'bytes=' + length + '-' } });
+  assert.equal(invalid.status, 416);
+  assert.equal(invalid.headers.get('content-range'), 'bytes */' + length);
 });
 
 test('progress and feedback are isolated per account and stale revisions do not overwrite saved data', async (t) => {
