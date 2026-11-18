@@ -19,6 +19,7 @@
         <a href="#path" aria-current="location">Маршрут</a>
         <a href="#stories">Истории</a>
         <a href="#studio">Фразы</a>
+        <a href="#listening">На слух</a>
         <a href="#dictionary">Словарь</a>
         <a href="#practice">Тренировка</a>
       </nav>
@@ -133,6 +134,21 @@
       </div>
       <div class="studio-stage" id="studio-stage">
         <div class="studio-preview" aria-hidden="true"><span>Қайда?</span><span>Оқу</span><span>залы</span></div>
+      </div>
+    </section>
+
+    <section class="listening" id="listening" aria-labelledby="listening-title">
+      <div class="listening-intro">
+        <h2 id="listening-title">Аудирование<span>.</span></h2>
+        <p>Послушай пять фраз на казахском и выбери перевод. Запись можно включить ещё раз или замедлить.</p>
+        <label for="listening-level">Уровень</label>
+        <select id="listening-level"><option value="all">A1 и A2</option><option value="A1">A1 · первые фразы</option><option value="A2">A2 · в диалоге</option></select>
+        <button class="button button-primary" id="listening-start" type="button">Начать аудирование</button>
+        <p id="listening-record"></p>
+        <a class="text-button" href="#practice">Текстовая тренировка ↗</a>
+      </div>
+      <div class="listening-stage" id="listening-stage">
+        <div class="listening-preview" aria-hidden="true"><div class="listening-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
       </div>
     </section>
 

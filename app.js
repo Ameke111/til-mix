@@ -4,12 +4,13 @@ import {
   pendingMistakes, quizQuestions, recordMistake, scheduleReview, weekDays
 } from './learning.js';
 import { setupAccount } from './account.js';
-import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
+import { countReview, dailyTasks, gameStats, masterRecording, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
 import { masterStudio } from './studio.js';
 import { setupStudio } from './studio-ui.js';
 import { markPractice } from './activity.js';
 import { activityCalendar, renderWeek } from './activity-ui.js';
 import { setupCompanion, setupDailyPhrase } from './companion-ui.js';
+import { setupListening } from './listening-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -181,6 +182,7 @@ function renderRoute() {
   renderMistakes();
   renderGame(stats, localDay());
   studio.updateSummary();
+  listening.updateSummary();
   renderWeekSummary();
   $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
   const firstUnfinished = TIL_ROUTE.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
@@ -257,6 +259,7 @@ function swapProgress(raw) {
   $('#quiz').replaceChildren(quizPlaceholder.cloneNode(true));
   $('#quiz-start').firstChild.textContent = 'Начать тренировку ';
   studio.reset();
+  listening.reset();
   renderStories();
   renderDictionary();
   renderRoute();
@@ -333,6 +336,7 @@ function addToReview(kk, refreshDue = false) {
 }
 
 function stopSpeech() {
+  listening.stop();
   window.speechSynthesis?.cancel();
   if (activeAudio) {
     activeAudio.textContent = activeAudio.dataset.idleText || '◖))';
@@ -657,7 +661,7 @@ function renderReviewSummary(message = '') {
   const intro = elem('p', 'review-count', count ? 'На сегодня: ' + count : 'Пока всё спокойно');
   const caption = elem('p', '', message || (count
     ? 'За один подход — до восьми карточек.'
-    : 'Фразы появятся после диалогов, ошибок в тесте или вручную из словаря.'));
+    : 'Фразы появятся после диалогов и тренировок. Их также можно добавить из словаря.'));
   const dictionaryLink = elem('a', 'text-button review-link', 'Добавить фразы из словаря ↓');
   dictionaryLink.href = '#dictionary';
   $('#review-content').replaceChildren(intro, caption, dictionaryLink);
@@ -1072,6 +1076,19 @@ const studio = setupStudio({
     return reward;
   }
 });
+const listening = setupListening({
+  elem, button, kazakh, shuffle, stopSpeech,
+  readSolved: () => progress.game.listening,
+  onAnswer(clip, correct) {
+    recordActivity('listening');
+    const reward = correct ? masterRecording(progress.game, clip.id) : 0;
+    if (correct) save();
+    else rememberMiss(clip.kk);
+    renderRoute();
+    reactToPractice(correct ? 'cheer' : 'think');
+    return reward;
+  }
+});
 const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange: renderWeekSummary });
 for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]) {
   const filter = elem('button', '', label);
@@ -1085,7 +1102,7 @@ for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]
   $('#quiz-category').append(option);
 }
 $('#story-total').textContent = 'Уроки A1–A2 · ' + TIL_STORIES.length;
-$('#ending-total').textContent = totalEndings + ' концовки';
+$('#ending-total').textContent = 'Концовки · ' + totalEndings;
 for (const id of lessonOrder) {
   const option = elem('option', '', stories.get(id).title);
   option.value = id;
@@ -1106,6 +1123,7 @@ if (stories.has(sharedLesson)) {
   });
 }
 document.addEventListener('visibilitychange', () => {
+  if (document.hidden) listening.stop();
   if (!document.hidden && !storyDialog.open) {
     renderRoute();
     renderReviewSummary();

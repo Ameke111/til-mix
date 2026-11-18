@@ -259,7 +259,7 @@ section { scroll-margin-top: 90px; }
   .wrap { width: calc(100% - 28px); }
   .site-header { position: static; }
   .header-row { grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 10px 0 4px; }
-  .nav { grid-column: 1/-1; grid-row: 2; justify-content: center; gap: clamp(10px, 3vw, 24px); }
+  .nav { grid-column: 1/-1; grid-row: 2; justify-content: center; flex-wrap: wrap; gap: 0 clamp(8px, 2vw, 20px); }
   .nav a { font-size: .79rem; }
   .brand { font-size: 22px; }
   .brand-mark { height: 31px; width: 31px; font-size: 21px; }
@@ -308,6 +308,10 @@ section { scroll-margin-top: 90px; }
   .practice-art { min-height: 105px; }
   .site-footer { min-height: 64px; }
   .site-footer p { display: none; }
+}
+@media (max-width: 405px) {
+  .nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 6px; }
+  .nav a { display: grid; place-items: center; min-height: 44px; padding: 5px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

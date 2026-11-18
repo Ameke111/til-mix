@@ -12,7 +12,7 @@ const hashOptions = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
 const sessionSeconds = 7 * 24 * 60 * 60;
 const bodyLimit = 128 * 1024;
 const feedbackCategories = new Set(['lesson', 'interface', 'idea']);
-const types = { js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml' };
+const types = { js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', wav: 'audio/wav' };
 
 class RequestError extends Error {
   constructor(status, code, message) {
@@ -29,6 +29,26 @@ const invalidCredentials = () => new RequestError(401, 'bad_credentials', 'Пр�
 function reply(res, status, data, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
   res.end(JSON.stringify(data));
+}
+
+function sendRecording(req, res, file, headers) {
+  const base = { ...headers, 'Accept-Ranges': 'bytes' };
+  const range = req.method === 'GET' && !req.headers['if-range'] && /^bytes=(\d*)-(\d*)$/i.exec(req.headers.range ?? '');
+  if (!range || (!range[1] && !range[2])) {
+    res.writeHead(200, { ...base, 'Content-Length': file.length });
+    return res.end(req.method === 'HEAD' ? undefined : file);
+  }
+  const first = range[1] ? Number(range[1]) : Math.max(0, file.length - Number(range[2]));
+  const last = range[1] && range[2] ? Math.min(file.length - 1, Number(range[2])) : file.length - 1;
+  if (first > last) {
+    res.writeHead(416, { ...base, 'Content-Range': 'bytes */' + file.length, 'Content-Length': 0 });
+    return res.end();
+  }
+  const body = file.subarray(first, last + 1);
+  res.writeHead(206, {
+    ...base, 'Content-Range': 'bytes ' + first + '-' + last + '/' + file.length, 'Content-Length': body.length
+  });
+  return res.end(body);
 }
 
 async function jsonBody(req) {
@@ -314,10 +334,12 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : page);
       }
-      const asset = path.match(/^\/assets\/([a-zA-Z0-9_-]+\.(js|css|svg))$/);
+      const asset = path.match(/^\/assets\/([a-zA-Z0-9_-]+\.(js|css|svg|wav))$/);
       if (!asset) throw new RequestError(404, 'not_found', 'Такой страницы нет.');
       const file = readFileSync(resolve(staticDir, 'assets', asset[1]));
-      res.writeHead(200, { 'Content-Type': types[asset[2]], 'Cache-Control': 'public, max-age=31536000, immutable' });
+      const headers = { 'Content-Type': types[asset[2]], 'Cache-Control': 'public, max-age=31536000, immutable' };
+      if (asset[2] === 'wav') return sendRecording(req, res, file, headers);
+      res.writeHead(200, headers);
       res.end(req.method === 'HEAD' ? undefined : file);
     } catch (error) {
       if (error instanceof RequestError) reply(res, error.status, { code: error.code, message: error.message });
