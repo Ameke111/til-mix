@@ -64,6 +64,7 @@ async function submit(form, run, errorHandler) {
 
 export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange }) {
   const hasServer = Boolean($('meta[name="til-server"][content="accounts"]'));
+  const isDemo = Boolean($('meta[name="til-demo"][content="owner"]'));
   const dialog = $('#account-dialog');
   const feedbackDialog = $('#feedback-dialog');
   const accountStatus = $('#account-status');
@@ -181,6 +182,24 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
     updateProfile();
     dialog.showModal();
   });
+  if (isDemo) {
+    $('#demo-banner').hidden = false;
+    $('#open-demo-admin').addEventListener('click', async (event) => {
+      const trigger = event.currentTarget;
+      if (trigger.disabled) return;
+      trigger.disabled = true;
+      status($('#demo-status'), 'Открываем панель…');
+      try {
+        if (!current?.admin) activate(await api('demo/admin', 'POST'));
+        status($('#demo-status'));
+        $('#open-admin').click();
+      } catch (error) {
+        status($('#demo-status'), error.message, true);
+      } finally {
+        trigger.disabled = false;
+      }
+    });
+  }
   for (const tab of document.querySelectorAll('[data-auth-mode]')) {
     tab.addEventListener('click', () => {
       authMode = tab.dataset.authMode;

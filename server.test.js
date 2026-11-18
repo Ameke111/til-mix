@@ -11,8 +11,8 @@ const origin = 'http://127.0.0.1:4173';
 const passphrase = 'учебная фраза для проверки';
 const candidate = (login) => ({ login, name: 'Тестовый ученик', password: passphrase, accept: true });
 
-async function start(dbPath, requestOrigin = origin) {
-  const server = createTilServer({ dbPath, origin: requestOrigin });
+async function start(dbPath, requestOrigin = origin, demo = false) {
+  const server = createTilServer({ dbPath, origin: requestOrigin, demo });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + server.address().port + '/api/';
   const send = (path, { method = 'GET', body, cookie, originHeader = requestOrigin } = {}) => {
@@ -172,4 +172,25 @@ test('owner-only triage migrates an older database, preserves notes and allows i
   assert.equal((await send('admin/feedback/' + id, { method: 'PATCH', cookie: owner, body: { state: 'open' } })).status, 200);
   changeRole('revoke');
   assert.equal((await send('admin/feedback', { cookie: owner })).status, 403);
+});
+
+test('demo owner signs in only on the isolated server and has a separate session cookie', async (t) => {
+  assert.throws(() => createTilServer({ demo: true, dbPath: 'ignored.sqlite' }), /базой в памяти/);
+  assert.throws(() => createTilServer({ demo: true, origin: 'https://example.org' }), /127\.0\.0\.1/);
+  const regular = await start();
+  const sandbox = await start(undefined, origin, true);
+  t.after(async () => { await Promise.all([regular.close(), sandbox.close()]); });
+
+  assert.equal((await regular.send('demo/admin', { method: 'POST' })).status, 404);
+  assert.equal((await sandbox.send('demo/admin', { method: 'POST', originHeader: 'https://example.org' })).status, 403);
+  assert.equal((await sandbox.send('admin/feedback')).status, 401);
+  const auth = await sandbox.send('demo/admin', { method: 'POST' });
+  assert.equal(auth.status, 200);
+  assert.equal((await auth.json()).user.admin, true);
+  const cookie = auth.headers.get('set-cookie').split(';')[0];
+  assert.match(cookie, /^til_demo_session=/);
+  assert.equal((await regular.send('admin/feedback', { cookie })).status, 401);
+  const inbox = await (await sandbox.send('admin/feedback', { cookie })).json();
+  assert.deepEqual(inbox.counts, { open: 2, closed: 1 });
+  assert.equal(inbox.accounts, 3);
 });

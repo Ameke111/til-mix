@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "node build.js --dev",
     "start": "node server.js",
+    "predemo": "npm run build",
+    "demo": "node demo.js",
     "admin": "node admin.js",
     "build": "node build.js",
     "preview": "node build.js --preview",
