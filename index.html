@@ -64,39 +64,6 @@
       <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="ending-total">Концовки</b><span>Реплики меняют сюжет</span></div></li>
     </ul>
 
-    <section class="companion" id="companion" aria-labelledby="companion-title">
-      <div class="companion-head">
-        <h2 id="companion-title">Түлкі <span>· твой спутник</span></h2>
-        <button class="text-button" id="companion-toggle" type="button" aria-controls="companion-body" aria-expanded="true">Свернуть</button>
-      </div>
-      <div class="companion-body" id="companion-body">
-        <div class="fox-scene" aria-hidden="true">
-          <div class="fox-sparkle fox-sparkle-top">✦</div>
-          <div class="fox-sparkle fox-sparkle-bottom">✧</div>
-          <div class="fox" id="fox">
-            <span class="fox-tail"></span><span class="fox-body"></span><span class="fox-paws"></span>
-            <div class="fox-head"><span class="fox-ear fox-ear-left"></span><span class="fox-ear fox-ear-right"></span><span class="fox-face"></span><span class="fox-eye fox-eye-left"></span><span class="fox-eye fox-eye-right"></span><span class="fox-nose"></span></div>
-          </div>
-        </div>
-        <div class="companion-guide">
-          <p id="companion-line">Сәлем! Готов к разговору?</p>
-          <div class="companion-actions">
-            <a class="button button-primary" id="companion-next" href="#path">К урокам ↗</a>
-            <button class="button button-outline" id="companion-pet" type="button">Погладить</button>
-          </div>
-          <span id="companion-status" class="sr-only" role="status"></span>
-        </div>
-        <div class="companion-phrase">
-          <p class="companion-label">Фраза дня</p>
-          <p id="companion-kk" lang="kk"></p>
-          <p id="companion-ru"></p>
-          <div class="companion-actions" id="companion-phrase-actions">
-            <button class="text-button" id="companion-save" type="button">В карточки ↗</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="learning-path" id="path" aria-labelledby="path-title">
       <div class="section-head">
         <div><p class="eyebrow"><span aria-hidden="true">✳</span> ТВОЙ МАРШРУТ</p><h2 id="path-title">От первой фразы<br>до разговора<span>.</span></h2></div>
@@ -176,7 +143,16 @@
         <p>Сначала вспомни перевод, потом переверни карточку. Сложные фразы вернутся раньше.</p>
         <button class="button button-primary" id="review-start" type="button">Начать повторение <span aria-hidden="true">↗</span></button>
       </div>
-      <div class="review-card" id="review-content"><p class="review-count" id="review-due"></p><p id="review-caption"></p><a class="text-button review-link" href="#dictionary">Добавить фразы из словаря ↓</a></div>
+      <div class="review-side">
+        <div class="review-card" id="review-content"><p class="review-count" id="review-due"></p><p id="review-caption"></p><a class="text-button review-link" href="#dictionary">Добавить фразы из словаря ↓</a></div>
+        <div class="daily-phrase">
+          <h3>Фраза дня</h3>
+          <p id="daily-phrase-kk" lang="kk"></p>
+          <p id="daily-phrase-ru"></p>
+          <div id="daily-phrase-actions"><button class="text-button" id="daily-phrase-save" type="button">В карточки ↗</button></div>
+          <span id="daily-phrase-status" class="sr-only" role="status"></span>
+        </div>
+      </div>
     </section>
 
     <section class="dictionary" id="dictionary" aria-labelledby="dictionary-title">
@@ -210,6 +186,19 @@
     <p>Разговорный казахский для повседневных ситуаций.</p>
     <button class="text-button" id="open-feedback" type="button">Обратная связь ↗</button>
   </footer>
+
+  <button id="companion" class="companion" type="button" aria-label="Погладить Түлкі" title="Погладить Түлкі">
+    <span class="fox-shadow" aria-hidden="true"></span>
+    <span class="fox-float" aria-hidden="true">
+      <span class="fox-sparkle fox-sparkle-top">✦</span>
+      <span class="fox-sparkle fox-sparkle-bottom">✧</span>
+      <span class="fox" id="fox">
+        <span class="fox-tail"></span><span class="fox-body"></span><span class="fox-paws"></span>
+        <span class="fox-head"><span class="fox-ear fox-ear-left"></span><span class="fox-ear fox-ear-right"></span><span class="fox-face"></span><span class="fox-eye fox-eye-left"></span><span class="fox-eye fox-eye-right"></span><span class="fox-nose"></span></span>
+      </span>
+    </span>
+  </button>
+  <span id="companion-status" class="sr-only" role="status"></span>
 
   <dialog class="dialog story-dialog" id="story-dialog" aria-labelledby="story-title">
     <div class="dialog-head"><div><span class="dialog-stage" id="story-stage"></span><h2 id="story-title"></h2></div><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть историю">×</button></div>
