@@ -184,7 +184,7 @@ function renderRoute() {
   renderWeekSummary();
   $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
   const firstUnfinished = TIL_ROUTE.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
-  $('#path-summary').textContent = 'Пройдено ' + stats.completed.size + ' из ' + TIL_STORIES.length + ' уроков';
+  $('#path-summary').textContent = 'Пройдено уроков: ' + stats.completed.size + ' из ' + TIL_STORIES.length;
   const steps = TIL_ROUTE.map((chapter, index) => {
     const { id, title, level, ids } = chapter;
     const completed = ids.filter((id) => stats.completed.has(id));
@@ -1084,7 +1084,7 @@ for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]
   option.value = id;
   $('#quiz-category').append(option);
 }
-$('#story-total').textContent = TIL_STORIES.length + ' уроков A1–A2';
+$('#story-total').textContent = 'Уроки A1–A2 · ' + TIL_STORIES.length;
 $('#ending-total').textContent = totalEndings + ' концовки';
 for (const id of lessonOrder) {
   const option = elem('option', '', stories.get(id).title);
