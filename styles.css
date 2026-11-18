@@ -181,6 +181,11 @@ section { scroll-margin-top: 90px; }
 .quiz-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 13px; }
 .quiz-settings label { display: grid; gap: 4px; font-size: .75rem; font-weight: 800; color: #d6e8d5; }
 .quiz-settings select { width: 100%; min-width: 0; min-height: 42px; background: #284c39; border: 1px solid #63866d; border-radius: 9px; padding: 7px; color: var(--white); font-size: .82rem; }
+.mistake-practice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-top: 18px; padding: 12px; border: 1px solid #63866d; border-radius: 14px; background: #284c39; }
+.mistake-practice h3 { margin: 0; color: var(--white); font-size: .92rem; }
+.mistake-practice p { margin: 4px 0 0; color: #d6e8d5; font-size: .78rem; }
+.mistake-practice .button { min-height: 38px; font-size: .82rem; padding: 6px 12px; }
+.mistake-practice .button:disabled { opacity: .7; cursor: default; }
 .practice-art { display: flex; justify-content: center; align-items: center; min-height: 140px; isolation: isolate; overflow: hidden; border-radius: 18px; background: #28533d; }
 .practice-art span { color: var(--ink); width: clamp(47px, 6vw, 75px); height: clamp(55px, 7vw, 90px); display: grid; place-items: center; background: var(--lime); border-radius: 12px; font-weight: 800; font-size: clamp(2.3rem, 4vw, 3.8rem); transform: rotate(-17deg) translateY(2px); box-shadow: 0 7px 0 #142f24; }
 .practice-art span:nth-child(2) { background: #ffcbb3; transform: rotate(7deg) translateY(-9px); }

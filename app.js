@@ -1,5 +1,8 @@
 import { TIL_CATEGORIES, TIL_ROUTE, TIL_STORIES } from './stories.js';
-import { duePhrases, localDay, normalizeReview, quizQuestions, scheduleReview, weekDays } from './learning.js';
+import {
+  duePhrases, localDay, mergeMistakes, normalizeMistakes, normalizeReview,
+  pendingMistakes, quizQuestions, recordMistake, scheduleReview, weekDays
+} from './learning.js';
 import { setupAccount } from './account.js';
 import { countReview, dailyTasks, gameStats, mergeGame, normalizeGame, passDailyQuiz, rankFor, starsFor } from './game.js';
 import { masterStudio } from './studio.js';
@@ -58,6 +61,7 @@ function readProgress(raw) {
       activeDays: savedDays(saved.activeDays),
       challengeDays: savedDays(saved.challengeDays),
       game: normalizeGame(saved.game, phrases),
+      mistakes: normalizeMistakes(saved.mistakes, phrases),
       review: normalizeReview(Object.fromEntries(Object.entries(saved.review || {}).filter(([phrase]) => phrases.has(phrase))))
     };
   } catch {
@@ -174,6 +178,7 @@ function renderGame(stats, day) {
 
 function renderRoute() {
   const stats = gameStats(progress, stories);
+  renderMistakes();
   renderGame(stats, localDay());
   studio.updateSummary();
   renderWeekSummary();
@@ -272,6 +277,7 @@ function mergeProgress(raw) {
   progress.activeDays = [...new Set([...progress.activeDays, ...other.activeDays])];
   progress.challengeDays = [...new Set([...progress.challengeDays, ...other.challengeDays])];
   mergeGame(progress.game, other.game);
+  mergeMistakes(progress.mistakes, other.mistakes);
   for (const [phrase, incoming] of Object.entries(other.review)) {
     const current = progress.review[phrase];
     if (!current || incoming.count > current.count || (incoming.count === current.count && incoming.due < current.due)) {
@@ -718,6 +724,28 @@ function startQuiz() {
   launchQuiz({ direction, category });
 }
 
+function renderMistakes() {
+  const count = pendingMistakes(progress.mistakes).length;
+  $('#mistake-count').textContent = count ? 'Фраз к повторению: ' + count : 'Пока нет ошибок';
+  $('#mistake-start').disabled = count === 0;
+}
+
+function rememberMiss(phrase) {
+  recordMistake(progress.mistakes, phrase, false);
+  addToReview(phrase, true);
+  renderMistakes();
+  save();
+}
+
+function startMistakeQuiz() {
+  const pending = new Set(pendingMistakes(progress.mistakes));
+  if (!pending.size) return;
+  launchQuiz({
+    direction: 'kk-ru', category: 'all', mistakesOnly: true,
+    eligible: ({ kk }) => pending.has(kk)
+  });
+}
+
 function startChapterQuiz(chapter) {
   location.hash = '#practice';
   launchQuiz({
@@ -726,11 +754,13 @@ function startChapterQuiz(chapter) {
   });
 }
 
-function launchQuiz({ direction, category, eligible, chapter }) {
+function launchQuiz({ direction, category, eligible, chapter, mistakesOnly = false }) {
   stopSpeech();
-  const questions = quizQuestions([...phrases.values()], { direction, category, eligible, size: 5 }, shuffle);
-  quiz = { questions, direction, chapter, index: 0, score: 0, mistakes: 0 };
-  $('#quiz-start').firstChild.textContent = chapter ? 'Начать обычный тест ' : 'Начать заново ';
+  const questions = quizQuestions([...phrases.values()], {
+    direction, category, eligible, size: 5, allDistractors: mistakesOnly
+  }, shuffle);
+  quiz = { questions, direction, chapter, mistakesOnly, index: 0, score: 0, mistakes: 0 };
+  $('#quiz-start').firstChild.textContent = chapter || mistakesOnly ? 'Начать обычный тест ' : 'Начать заново ';
   renderQuiz();
   $('#quiz').scrollIntoView({ block: 'nearest' });
 }
@@ -741,10 +771,11 @@ function renderQuiz() {
   step.tabIndex = -1;
   card.append(step);
   if (quiz.chapter) card.append(elem('p', 'chapter-quiz-name', 'Проверка главы «' + quiz.chapter.title + '»'));
+  if (quiz.mistakesOnly) card.append(elem('p', 'chapter-quiz-name', 'Работа над ошибками'));
   const question = quiz.questions[quiz.index];
   if (!question) {
     const before = experience();
-    if (quiz.questions.length === 5) {
+    if (!quiz.mistakesOnly && quiz.questions.length === 5) {
       progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
       passDailyQuiz(progress.game, localDay(), quiz.score);
       if (quiz.chapter) {
@@ -754,7 +785,7 @@ function renderQuiz() {
     }
     if (quiz.questions.length) recordActivity('quiz');
     renderRoute();
-    if (quiz.questions.length) reactToPractice(quiz.score >= 3 ? 'cheer' : 'think');
+    if (quiz.questions.length) reactToPractice(quiz.score / quiz.questions.length >= 0.6 ? 'cheer' : 'think');
     save();
     card.append(elem('p', 'phrase-text', 'Твой результат — ' + quiz.score + ' из ' + quiz.questions.length));
     if (quiz.chapter) {
@@ -765,13 +796,14 @@ function renderQuiz() {
     }
     const earned = experience() - before;
     if (earned) card.append(elem('p', 'xp-bonus', '+' + earned + ' XP'));
-    if (quiz.mistakes) {
-      const recap = elem('a', 'text-button', 'Повторить ошибки в карточках ↗');
-      recap.href = '#review';
-      card.append(recap);
+    const pending = pendingMistakes(progress.mistakes).length;
+    if (pending && (quiz.mistakes || quiz.mistakesOnly)) {
+      card.append(button('button button-primary', 'Повторить ошибки · ' + pending, startMistakeQuiz));
+    } else if (quiz.mistakesOnly) {
+      card.append(elem('p', 'feedback', 'Все ошибки разобраны!'));
     }
     const chapter = quiz.chapter;
-    card.append(button('button button-outline', chapter ? 'Повторить проверку' : 'Новые вопросы',
+    card.append(button('button button-outline', chapter ? 'Повторить проверку' : quiz.mistakesOnly ? 'К обычному тесту' : 'Новые вопросы',
       chapter ? () => startChapterQuiz(chapter) : startQuiz));
   } else {
     const prompt = quiz.direction === 'ru-kk' ? elem('p', 'phrase-text', question.prompt) : kazakh('p', 'phrase-text', question.prompt);
@@ -786,8 +818,11 @@ function renderQuiz() {
         }
         if (!correct) {
           event.currentTarget.dataset.result = 'wrong';
-          addToReview(question.kk, true);
+          rememberMiss(question.kk);
           quiz.mistakes++;
+        } else if (quiz.mistakesOnly) {
+          recordMistake(progress.mistakes, question.kk, true);
+          renderMistakes();
           save();
         }
         const note = elem('p', 'feedback', correct ? 'Верно!' : 'Верный перевод: «' + question.correct + '»');
@@ -950,6 +985,7 @@ $('#show-more').addEventListener('click', () => {
   if (!showAllPhrases) $('#phrase-search').focus({ preventScroll: false });
 });
 $('#quiz-start').addEventListener('click', startQuiz);
+$('#mistake-start').addEventListener('click', startMistakeQuiz);
 $('#review-start').addEventListener('click', startReview);
 $('#story-search').addEventListener('input', () => {
   visibleStories = catalogueBatch;
@@ -987,9 +1023,8 @@ const studio = setupStudio({
   elem, button, kazakh, audioButton, stopSpeech, shuffle,
   readSolved: (mode) => mode === 'typing' ? progress.game.writing : progress.game.studio,
   onMiss(phrase) {
-    addToReview(phrase, true);
+    rememberMiss(phrase);
     reactToPractice('think');
-    save();
   },
   onSolve(id, clean, mode) {
     const solved = mode === 'typing' ? progress.game.writing : progress.game.studio;

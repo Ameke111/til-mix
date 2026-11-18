@@ -1,0 +1,342 @@
+{
+  "summary": {
+    "model": "qwen2.5-0.5b-instruct-q4_k_m",
+    "cases": 32,
+    "baseline": {
+      "correct": 22,
+      "macro_f1": 0.7015,
+      "unclear_recall": 1.0
+    },
+    "model_results": {
+      "correct": 11,
+      "macro_f1": 0.2249,
+      "unclear_recall": 0.0
+    },
+    "invalid": 0,
+    "input_tokens_mean": 134.75,
+    "output_tokens_mean": 2,
+    "latency_ms_p95": 432
+  },
+  "rows": [
+    {
+      "id": "01",
+      "expected": "letters",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 128,
+      "output_tokens": 2,
+      "latency_ms": 254
+    },
+    {
+      "id": "02",
+      "expected": "letters",
+      "baseline": "letters",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 130,
+      "output_tokens": 2,
+      "latency_ms": 280
+    },
+    {
+      "id": "03",
+      "expected": "letters",
+      "baseline": "letters",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 126,
+      "output_tokens": 2,
+      "latency_ms": 263
+    },
+    {
+      "id": "04",
+      "expected": "letters",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 139,
+      "output_tokens": 2,
+      "latency_ms": 318
+    },
+    {
+      "id": "05",
+      "expected": "letters",
+      "baseline": "letters",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 130,
+      "output_tokens": 2,
+      "latency_ms": 259
+    },
+    {
+      "id": "06",
+      "expected": "letters",
+      "baseline": "letters",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 139,
+      "output_tokens": 2,
+      "latency_ms": 356
+    },
+    {
+      "id": "07",
+      "expected": "letters",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 134,
+      "output_tokens": 2,
+      "latency_ms": 294
+    },
+    {
+      "id": "08",
+      "expected": "letters",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 136,
+      "output_tokens": 2,
+      "latency_ms": 329
+    },
+    {
+      "id": "09",
+      "expected": "verb",
+      "baseline": "verb",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 132,
+      "output_tokens": 2,
+      "latency_ms": 254
+    },
+    {
+      "id": "10",
+      "expected": "verb",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 135,
+      "output_tokens": 2,
+      "latency_ms": 283
+    },
+    {
+      "id": "11",
+      "expected": "verb",
+      "baseline": "verb",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 148,
+      "output_tokens": 2,
+      "latency_ms": 358
+    },
+    {
+      "id": "12",
+      "expected": "verb",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 132,
+      "output_tokens": 2,
+      "latency_ms": 259
+    },
+    {
+      "id": "13",
+      "expected": "verb",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 134,
+      "output_tokens": 2,
+      "latency_ms": 323
+    },
+    {
+      "id": "14",
+      "expected": "verb",
+      "baseline": "verb",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 136,
+      "output_tokens": 2,
+      "latency_ms": 360
+    },
+    {
+      "id": "15",
+      "expected": "verb",
+      "baseline": "verb",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 143,
+      "output_tokens": 2,
+      "latency_ms": 424
+    },
+    {
+      "id": "16",
+      "expected": "verb",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 133,
+      "output_tokens": 2,
+      "latency_ms": 292
+    },
+    {
+      "id": "17",
+      "expected": "order",
+      "baseline": "order",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 140,
+      "output_tokens": 2,
+      "latency_ms": 329
+    },
+    {
+      "id": "18",
+      "expected": "order",
+      "baseline": "order",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 132,
+      "output_tokens": 2,
+      "latency_ms": 236
+    },
+    {
+      "id": "19",
+      "expected": "order",
+      "baseline": "order",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 144,
+      "output_tokens": 2,
+      "latency_ms": 395
+    },
+    {
+      "id": "20",
+      "expected": "order",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 148,
+      "output_tokens": 2,
+      "latency_ms": 428
+    },
+    {
+      "id": "21",
+      "expected": "order",
+      "baseline": "order",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 133,
+      "output_tokens": 2,
+      "latency_ms": 325
+    },
+    {
+      "id": "22",
+      "expected": "order",
+      "baseline": "order",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 143,
+      "output_tokens": 2,
+      "latency_ms": 412
+    },
+    {
+      "id": "23",
+      "expected": "order",
+      "baseline": "order",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 138,
+      "output_tokens": 2,
+      "latency_ms": 340
+    },
+    {
+      "id": "24",
+      "expected": "order",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 145,
+      "output_tokens": 2,
+      "latency_ms": 437
+    },
+    {
+      "id": "25",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 120,
+      "output_tokens": 2,
+      "latency_ms": 149
+    },
+    {
+      "id": "26",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 129,
+      "output_tokens": 2,
+      "latency_ms": 214
+    },
+    {
+      "id": "27",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 124,
+      "output_tokens": 2,
+      "latency_ms": 204
+    },
+    {
+      "id": "28",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 127,
+      "output_tokens": 2,
+      "latency_ms": 217
+    },
+    {
+      "id": "29",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 130,
+      "output_tokens": 2,
+      "latency_ms": 231
+    },
+    {
+      "id": "30",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "verb",
+      "model_label": "verb",
+      "input_tokens": 150,
+      "output_tokens": 2,
+      "latency_ms": 451
+    },
+    {
+      "id": "31",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 127,
+      "output_tokens": 2,
+      "latency_ms": 248
+    },
+    {
+      "id": "32",
+      "expected": "unclear",
+      "baseline": "unclear",
+      "model_output": "order",
+      "model_label": "order",
+      "input_tokens": 127,
+      "output_tokens": 2,
+      "latency_ms": 268
+    }
+  ]
+}
