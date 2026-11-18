@@ -39,10 +39,10 @@ export function scheduleReview(card, grade, day) {
   };
 }
 
-export function quizQuestions(entries, { direction, category, size }, shuffle) {
+export function quizQuestions(entries, { direction, category, size, eligible = () => true }, shuffle) {
   const prompt = direction === 'ru-kk' ? 'ru' : 'kk';
   const answer = direction === 'ru-kk' ? 'kk' : 'ru';
-  const pool = entries.filter((phrase) => category === 'all' || phrase.categories.includes(category));
+  const pool = entries.filter((phrase) => eligible(phrase) && (category === 'all' || phrase.categories.includes(category)));
   const questions = new Map();
   const validAnswers = new Map();
   for (const phrase of entries) {

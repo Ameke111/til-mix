@@ -49,3 +49,17 @@ test('reverse quizzes filter by theme and never use another valid translation as
   assert.deepEqual(result[0].options, ['Сәлем!', 'Рақмет!', 'Кездескенше!']);
   for (const question of result) assert.ok(question.options.includes(question.correct));
 });
+
+test('chapter quizzes use only eligible lesson phrases for questions and answer options', () => {
+  const entries = [
+    { kk: 'Сәлем!', ru: 'Привет!', inChapter: true },
+    { kk: 'Сау бол!', ru: 'Пока!', inChapter: true },
+    { kk: 'Рақмет!', ru: 'Спасибо!', inChapter: true },
+    { kk: 'Аялдама қайда?', ru: 'Где остановка?', inChapter: false }
+  ];
+  const result = quizQuestions(entries, {
+    direction: 'ru-kk', category: 'all', size: 5, eligible: (entry) => entry.inChapter
+  }, (items) => items);
+  assert.deepEqual(result.map(({ prompt }) => prompt), ['Привет!', 'Пока!', 'Спасибо!']);
+  assert.ok(result.every(({ options }) => options.length === 3 && !options.includes('Аялдама қайда?')));
+});

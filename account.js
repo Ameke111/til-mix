@@ -1,3 +1,5 @@
+import { setupAdmin } from './admin-ui.js';
+
 const settingsKey = 'til-mix-guest-settings';
 const categories = { lesson: 'Ошибка в уроке', interface: 'Работа сайта', idea: 'Идея для улучшения' };
 const $ = (selector) => document.querySelector(selector);
@@ -60,7 +62,7 @@ async function submit(form, run, errorHandler) {
   }
 }
 
-export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify }) {
+export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange }) {
   const hasServer = Boolean($('meta[name="til-server"][content="accounts"]'));
   const dialog = $('#account-dialog');
   const feedbackDialog = $('#feedback-dialog');
@@ -70,6 +72,7 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
   const settings = $('#profile-form');
   const feedback = $('#feedback-form');
   const secret = $('#auth-password');
+  const enableAdmin = setupAdmin({ api, status, accountDialog: dialog, categories });
   let guest = readSettings();
   let current;
   let revision = 0;
@@ -125,6 +128,7 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
     $('#account-logout').hidden = !current;
     $('#merge-guest-progress').hidden = !current;
     $('#retry-sync').hidden = !current || !blocked;
+    enableAdmin(current?.admin === true);
   }
 
   function activate(data) {
@@ -229,6 +233,7 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
         guest = { name, weeklyGoal };
       }
       updateProfile();
+      onGoalChange();
       status(accountStatus, 'Настройки сохранены.');
     }, report);
   });
@@ -314,9 +319,9 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
 
   function updateFeedbackForm() {
     $('#feedback-intro').textContent = current
-      ? 'Опиши ситуацию без паролей, имён других людей и контактных данных.'
+      ? 'Обращение увидит владелец сайта. Опиши ситуацию без паролей, чужих имён и контактных данных.'
       : 'Составь заметку и скачай её текстом. Она останется на твоём устройстве.';
-    $('#feedback-submit').textContent = current ? 'Сохранить обращение' : 'Скачать заметку';
+    $('#feedback-submit').textContent = current ? 'Отправить обращение' : 'Скачать заметку';
   }
 
   async function loadFeedback() {
@@ -334,7 +339,8 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
       const box = document.createElement('article');
       box.className = 'feedback-entry';
       const label = document.createElement('strong');
-      label.textContent = categories[entry.category] + ' · ' + new Date(entry.created).toLocaleDateString('ru-RU');
+      label.textContent = categories[entry.category] + ' · ' + new Date(entry.created).toLocaleDateString('ru-RU')
+        + ' · ' + (entry.state === 'closed' ? 'Закрыто' : 'В очереди');
       const message = document.createElement('p');
       message.textContent = entry.message;
       box.append(label, message);
@@ -364,7 +370,7 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
         await api('feedback', 'POST', { category, message });
         feedback.reset();
         $('#feedback-count').textContent = '0 / 1200';
-        status(feedbackStatus, 'Обращение сохранено в профиле.');
+        status(feedbackStatus, 'Обращение отправлено. Статус виден в истории.');
         await loadFeedback();
       } else {
         download('til-mix-feedback.txt', categories[category] + '\n\n' + message + '\n', 'text/plain;charset=utf-8');

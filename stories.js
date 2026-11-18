@@ -220,10 +220,10 @@ export const TIL_CATEGORIES = {
 };
 
 export const TIL_ROUTE = [
-  { title: 'Первые фразы', level: 'A1', ids: ['coffee', 'campus', 'bakery'] },
-  { title: 'В городе', level: 'A1', ids: ['way', 'market', 'bus'] },
-  { title: 'Время с друзьями', level: 'A2', ids: ['meeting', 'cinema', 'sport'] },
-  { title: 'Учёба и карьера', level: 'A1–A2', ids: ['club', 'library', 'interview'] },
-  { title: 'В пути', level: 'A2', ids: ['station', 'hotel', 'trip'] },
-  { title: 'Решаем вопросы', level: 'A2', ids: ['pharmacy', 'parcel', 'teamwork'] }
+  { id: 'basics', title: 'Первые фразы', level: 'A1', ids: ['coffee', 'campus', 'bakery'] },
+  { id: 'city', title: 'В городе', level: 'A1', ids: ['way', 'market', 'bus'] },
+  { id: 'friends', title: 'Время с друзьями', level: 'A2', ids: ['meeting', 'cinema', 'sport'] },
+  { id: 'career', title: 'Учёба и карьера', level: 'A1–A2', ids: ['club', 'library', 'interview'] },
+  { id: 'travel', title: 'В пути', level: 'A2', ids: ['station', 'hotel', 'trip'] },
+  { id: 'errands', title: 'Решаем вопросы', level: 'A2', ids: ['pharmacy', 'parcel', 'teamwork'] }
 ];
