@@ -1,0 +1,27 @@
+{
+  "cycle": "S1",
+  "facts": {
+    "completed": 2,
+    "mean_seconds": 100,
+    "p85_seconds": 109,
+    "issues": [
+      {
+        "number": 23,
+        "created_at": "2026-11-15T17:24:40Z",
+        "closed_at": "2026-11-15T17:26:11Z",
+        "elapsed_seconds": 91
+      },
+      {
+        "number": 24,
+        "created_at": "2026-11-15T17:26:13Z",
+        "closed_at": "2026-11-15T17:28:02Z",
+        "elapsed_seconds": 109
+      }
+    ]
+  },
+  "model_draft": "Завершено: 2\nЗадачи: 23, 24\nСреднее: 100 с\nP85: 109 с\nСледующий шаг: нет данных",
+  "timings": {
+    "github_seconds": 1.51,
+    "model_seconds": 1.95
+  }
+}
