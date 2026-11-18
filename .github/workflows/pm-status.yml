@@ -1,0 +1,56 @@
+name: Draft weekly PM status
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: pm-status
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Fetch and verify model and CPU runtime
+        shell: bash
+        run: |
+          curl -fLSs --retry 2 --max-time 180 'https://github.com/ggml-org/llama.cpp/releases/download/b12521/llama-b12521-bin-ubuntu-x64.tar.gz' -o "$RUNNER_TEMP/llama.tar.gz"
+          curl -fLSs --retry 2 --max-time 180 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5d/qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true' -o "$RUNNER_TEMP/qwen.gguf"
+          cd "$RUNNER_TEMP"
+          echo 'ab8343cb39e17a18f183ce0a35543a6c3dcc15fb287f55909dd182cb975e345e  llama.tar.gz' | sha256sum --check
+          echo '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db  qwen.gguf' | sha256sum --check
+          mkdir llama
+          tar -xzf llama.tar.gz -C llama
+      - name: Generate report from completed GitHub issues
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          model_server="$(find "$RUNNER_TEMP/llama" -type f -name llama-server -print -quit)"
+          if [[ -z "$model_server" ]]; then exit 1; fi
+          env -u GH_TOKEN LD_LIBRARY_PATH="$(dirname "$model_server")" "$model_server" -m "$RUNNER_TEMP/qwen.gguf" --host 127.0.0.1 --port 8012 -t 2 -c 1024 --alias qwen-pm > "$RUNNER_TEMP/llama.log" 2>&1 &
+          model_pid=$!
+          trap 'kill "$model_pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --max-time 2 -fsS http://127.0.0.1:8012/health; then break; fi
+            sleep 2
+          done
+          curl --max-time 2 -fsS http://127.0.0.1:8012/health
+          python3 course/pm-status.py --out "$RUNNER_TEMP/pm-status"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pm-status-draft
+          path: ${{ runner.temp }}/pm-status/
+          retention-days: 14
+          if-no-files-found: error
