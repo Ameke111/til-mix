@@ -249,12 +249,12 @@ section { scroll-margin-top: 90px; }
 .toast { display: none; position: fixed; z-index: 6; bottom: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); padding: 9px 14px; border-radius: 9px; background: #163527; color: var(--white); box-shadow: 0 5px 15px #16352755; font-size: .82rem; }
 .toast:not(:empty) { display: block; animation: enter .2s both; }
 
-@media (max-width: 1050px) {
+@media (max-width: 1180px) {
   .header-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0 4px; }
   .nav { grid-column: 1/-1; grid-row: 2; justify-content: center; flex-wrap: wrap; gap: 0 clamp(8px, 2vw, 20px); }
   section { scroll-margin-top: 120px; }
 }
-@media (max-width: 1050px) and (max-height: 500px) {
+@media (max-width: 1180px) and (max-height: 500px) {
   .site-header { position: static; }
   section { scroll-margin-top: 14px; }
 }
@@ -317,8 +317,8 @@ section { scroll-margin-top: 90px; }
   .site-footer p { display: none; }
 }
 @media (max-width: 405px) {
-  .nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 6px; }
-  .nav a { display: grid; place-items: center; min-height: 44px; padding: 5px 0; }
+  .nav { gap: 0 5px; }
+  .nav a { display: grid; place-items: center; min-height: 44px; padding: 5px 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

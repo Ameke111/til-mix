@@ -11,6 +11,7 @@ import { markPractice } from './activity.js';
 import { activityCalendar, renderWeek } from './activity-ui.js';
 import { setupCompanion, setupDailyPhrase } from './companion-ui.js';
 import { setupListening } from './listening-ui.js';
+import { setupSpeaking } from './speaking-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -260,6 +261,7 @@ function swapProgress(raw) {
   $('#quiz-start').firstChild.textContent = 'Начать тренировку ';
   studio.reset();
   listening.reset();
+  speaking.reset();
   renderStories();
   renderDictionary();
   renderRoute();
@@ -337,6 +339,7 @@ function addToReview(kk, refreshDue = false) {
 
 function stopSpeech() {
   listening.stop();
+  speaking.stop();
   window.speechSynthesis?.cancel();
   if (activeAudio) {
     activeAudio.textContent = activeAudio.dataset.idleText || '◖))';
@@ -1044,6 +1047,7 @@ $('#more-stories').addEventListener('click', () => {
 
 function updateNavigation() {
   const section = location.hash || '#path';
+  if (section !== '#speaking') speaking.stop();
   for (const link of document.querySelectorAll('.nav a')) {
     if (link.hash === section) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
@@ -1089,6 +1093,14 @@ const listening = setupListening({
     return reward;
   }
 });
+const speaking = setupSpeaking({
+  elem, kazakh, stopSpeech,
+  onAudible() {
+    recordActivity('speaking');
+    renderRoute();
+    save();
+  }
+});
 const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange: renderWeekSummary });
 for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]) {
   const filter = elem('button', '', label);
@@ -1123,7 +1135,7 @@ if (stories.has(sharedLesson)) {
   });
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) listening.stop();
+  if (document.hidden) stopSpeech();
   if (!document.hidden && !storyDialog.open) {
     renderRoute();
     renderReviewSummary();

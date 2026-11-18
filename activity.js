@@ -1,11 +1,11 @@
-export const practiceTypes = { story: 'Диалог', quiz: 'Тест', review: 'Карточки', studio: 'Фразы', listening: 'Аудирование' };
-const flags = { story: 1, quiz: 2, review: 4, studio: 8, listening: 16 };
+export const practiceTypes = { story: 'Диалог', quiz: 'Тест', review: 'Карточки', studio: 'Фразы', listening: 'Аудирование', speaking: 'Произношение' };
+const flags = { story: 1, quiz: 2, review: 4, studio: 8, listening: 16, speaking: 32 };
 
 export function readActivity(raw) {
   const activity = Object.create(null);
   for (const [key, mask] of Object.entries(raw ?? {})) {
     const day = Number(key);
-    if (Number.isSafeInteger(day) && day > 0 && Number.isInteger(mask) && mask >= 1 && mask <= 31) activity[day] = mask;
+    if (Number.isSafeInteger(day) && day > 0 && Number.isInteger(mask) && mask >= 1 && mask <= 63) activity[day] = mask;
   }
   return activity;
 }

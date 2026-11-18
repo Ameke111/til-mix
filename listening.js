@@ -13,13 +13,17 @@ const exercises = [
   ['coworking-desk', 'coworking', 'desk', 'У окна или рядом со входом?', 'У стола или рядом с дверью?'],
   ['coworking-team', 'coworking', 'room', 'Во сколько начнётся встреча?', 'Сколько комнат нужно для встречи?'],
   ['volunteer-shift', 'volunteer', 'guests', 'Когда заканчивается смена?', 'Какие задачи будут на смене?'],
-  ['hackathon-project', 'hackathon', 'problem', 'Кто работал над вашим проектом?', 'Чем отличается ваш проект?']
+  ['hackathon-project', 'hackathon', 'problem', 'Кто работал над вашим проектом?', 'Чем отличается ваш проект?'],
+  ['reschedule-time', 'reschedule', 'start', 'На завтра есть свободное время?', 'На сегодня всё занято?', 0],
+  ['return-request', 'return-order', 'start', 'Хочу купить этот товар.', 'Хочу обменять этот товар.', 2],
+  ['workshop-supplies', 'workshop', 'start', 'Когда мне нужно прийти?', 'Что можно взять у вас?', 2]
 ];
 
-export const LISTENING_CLIPS = exercises.map(([id, lesson, scene, ...distractors]) => {
+export const LISTENING_CLIPS = exercises.map(([id, lesson, scene, first, second, choiceIndex]) => {
   const story = lessons.get(lesson);
-  const [kk, ru] = story.scenes[scene].line;
-  return { id, lesson, title: story.title, level: story.level, kk, ru, distractors };
+  const dialogue = story.scenes[scene];
+  const [kk, ru] = choiceIndex === undefined ? dialogue.line : dialogue.choices[choiceIndex];
+  return { id, lesson, title: story.title, level: story.level, kk, ru, distractors: [first, second] };
 });
 
 const clipIds = new Set(LISTENING_CLIPS.map(({ id }) => id));

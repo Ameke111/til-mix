@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -80,6 +80,27 @@ test('audio uses the correct MIME type and serves byte ranges for mobile playbac
   const invalid = await fetch(asset, { headers: { Range: 'bytes=' + length + '-' } });
   assert.equal(invalid.status, 416);
   assert.equal(invalid.headers.get('content-range'), 'bytes */' + length);
+});
+
+test('offline speech assets load with a worker-specific script policy', async (t) => {
+  const fixtures = await mkdtemp(join(tmpdir(), 'til-speech-'));
+  await mkdir(join(fixtures, 'assets'));
+  await writeFile(join(fixtures, 'index.html'), '<head></head>');
+  await writeFile(join(fixtures, 'assets', 'vosk-worker-0-0-8.js'), '// test worker');
+  await writeFile(join(fixtures, 'assets', 'vosk-model-small-kz-0.42.tar.gz'), 'test archive');
+  const { url, close } = await start(undefined, origin, false, fixtures);
+  t.after(async () => {
+    await close();
+    await rm(fixtures, { recursive: true, force: true });
+  });
+  const page = await fetch(url);
+  assert.doesNotMatch(page.headers.get('content-security-policy'), /unsafe-eval/);
+  const worker = await fetch(url + '/assets/vosk-worker-0-0-8.js');
+  assert.equal(worker.status, 200);
+  assert.match(worker.headers.get('content-security-policy'), /script-src 'self' 'unsafe-eval'/);
+  const model = await fetch(url + '/assets/vosk-model-small-kz-0.42.tar.gz');
+  assert.equal(model.headers.get('content-type'), 'application/gzip');
+  assert.equal(await model.text(), 'test archive');
 });
 
 test('progress and feedback are isolated per account and stale revisions do not overwrite saved data', async (t) => {
