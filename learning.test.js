@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { duePhrases, localDay, normalizeReview, quizQuestions, scheduleReview, weekDays } from './learning.js';
+import {
+  duePhrases, localDay, mergeMistakes, normalizeMistakes, normalizeReview,
+  pendingMistakes, quizQuestions, recordMistake, scheduleReview, weekDays
+} from './learning.js';
 
 test('local-day calendar starts on Monday across a month boundary', () => {
   const sunday = localDay(new Date(2026, 10, 1, 22));
@@ -34,6 +37,35 @@ test('a difficult or missed card comes back earlier', () => {
   assert.deepEqual(hard, { due: 201, step: 3, count: 11 });
   assert.deepEqual(missed, { due: 200, step: 0, count: 11 });
   assert.deepEqual(duePhrases({ hard, missed }, 200), ['missed']);
+});
+
+test('an older copy cannot reopen a corrected mistake but a fresh miss does', () => {
+  const phrases = new Set(['Сәлем!', 'Рақмет!']);
+  const mistakes = normalizeMistakes(undefined, phrases);
+  recordMistake(mistakes, 'Сәлем!', false, 10);
+  recordMistake(mistakes, 'Сәлем!', true, 10);
+  mergeMistakes(mistakes, normalizeMistakes({
+    'Сәлем!': { missed: 10, learned: 0 }, 'Рақмет!': { missed: '10', learned: 0 },
+    unknown: { missed: 13, learned: 0 }
+  }, phrases));
+  assert.deepEqual(pendingMistakes(mistakes), []);
+  mergeMistakes(mistakes, normalizeMistakes({ 'Сәлем!': { missed: 12, learned: 0 } }, phrases));
+  assert.deepEqual(pendingMistakes(mistakes), ['Сәлем!']);
+});
+
+test('a single mistake still gets a question with choices from the dictionary', () => {
+  const entries = [
+    { kk: 'Сәлем!', ru: 'Привет!' },
+    { kk: 'Сәлем!', ru: 'Здравствуй!' },
+    { kk: 'Рақмет!', ru: 'Спасибо!' },
+    { kk: 'Сау бол!', ru: 'Пока!' }
+  ];
+  const questions = quizQuestions(entries, {
+    direction: 'kk-ru', category: 'all', size: 5,
+    eligible: (entry) => entry.kk === 'Сәлем!', allDistractors: true
+  }, (items) => items);
+  assert.equal(questions.length, 1);
+  assert.deepEqual(questions[0].options, ['Привет!', 'Спасибо!', 'Пока!']);
 });
 
 test('reverse quizzes filter by theme and never use another valid translation as a distractor', () => {
