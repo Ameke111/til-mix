@@ -24,6 +24,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      - name: Prepare the public Kazakh speech model
+        if: github.event_name != 'pull_request'
+        run: python3 prepare-speech.py
       - run: npm run build
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
