@@ -7,8 +7,8 @@ import { gameStats, mergeGame, normalizeGame } from './game.js';
 const unchanged = (values) => values.slice();
 
 test('the studio has exercises for each lesson and four per topic', () => {
-  assert.equal(STUDIO_PROMPTS.length, 24);
-  assert.equal(new Set(STUDIO_PROMPTS.map(({ id }) => id)).size, 24);
+  assert.equal(STUDIO_PROMPTS.length, 30);
+  assert.equal(new Set(STUDIO_PROMPTS.map(({ id }) => id)).size, STUDIO_PROMPTS.length);
   assert.deepEqual([...new Set(STUDIO_PROMPTS.map(({ lesson }) => lesson))].sort(), TIL_STORIES.map(({ id }) => id).sort());
   for (const category of Object.keys(TIL_CATEGORIES)) {
     const exercises = pickStudioRound({ category, solved: [], shuffle: unchanged });

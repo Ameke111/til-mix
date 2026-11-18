@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { TIL_CATEGORIES, TIL_ROUTE, TIL_STORIES } from './stories.js';
 
-test('the 18 stories have unique IDs, valid categories and exactly one chapter each', () => {
-  assert.equal(TIL_STORIES.length, 18);
-  assert.equal(TIL_ROUTE.length, 6);
+test('stories have unique IDs, valid categories and exactly one chapter each', () => {
+  assert.equal(TIL_STORIES.length, 21);
+  assert.equal(TIL_ROUTE.length, 7);
   assert.equal(new Set(TIL_STORIES.map(({ id }) => id)).size, TIL_STORIES.length);
   assert.deepEqual(TIL_ROUTE.flatMap(({ ids }) => ids).sort(), TIL_STORIES.map(({ id }) => id).sort());
   for (const story of TIL_STORIES) {

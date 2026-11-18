@@ -524,6 +524,11 @@ function renderScene(focus = false, focusIndex) {
       storyDialog.addEventListener('close', () => studio.startLesson(lesson), { once: true });
       storyDialog.close();
     }));
+    actions.append(button('button button-outline', 'Словарь урока ↗', () => {
+      const lesson = currentStory.id;
+      storyDialog.addEventListener('close', () => openLessonDictionary(lesson), { once: true });
+      storyDialog.close();
+    }));
     actions.append(button('button ' + (next ? 'button-outline' : 'button-primary'), 'Другая ветка ↺', restartStory));
     panel.append(actions);
   } else {
@@ -564,13 +569,26 @@ function updateTranslation() {
   toggle.textContent = progress.translated ? 'Скрыть перевод' : 'Показать перевод';
 }
 
+function openLessonDictionary(lesson) {
+  $('#phrase-lesson').value = lesson;
+  $('#phrase-search').value = '';
+  favoritesOnly = false;
+  $('#favorite-filter').setAttribute('aria-pressed', 'false');
+  showAllPhrases = false;
+  renderDictionary();
+  location.hash = '#dictionary';
+  $('#phrase-lesson').focus({ preventScroll: true });
+}
+
 function renderDictionary() {
   const query = $('#phrase-search').value.trim().toLowerCase();
-  const entries = [...phrases.values()].filter(({ kk, ru }) =>
+  const lesson = $('#phrase-lesson').value;
+  const entries = [...phrases.values()].filter(({ kk, ru, lessons }) =>
+    (!lesson || lessons.has(lesson)) &&
     (!favoritesOnly || progress.favorites.has(kk)) &&
     (!query || kk.toLowerCase().includes(query) || ru.toLowerCase().includes(query))
   );
-  const expanded = Boolean(query || favoritesOnly || showAllPhrases);
+  const expanded = Boolean(lesson || query || favoritesOnly || showAllPhrases);
   const visible = expanded ? entries : entries.slice(0, 6);
   const fragment = document.createDocumentFragment();
   for (const { kk, ru } of visible) {
@@ -604,10 +622,13 @@ function renderDictionary() {
     card.append(text, controls);
     fragment.append(card);
   }
-  if (!entries.length) fragment.append(elem('p', 'empty', query ? 'По этому запросу ничего не нашлось.' : 'Сохрани фразу сердечком, и она появится здесь.'));
+  if (!entries.length) fragment.append(elem('p', 'empty', favoritesOnly && !query && !lesson
+    ? 'Сохрани фразу сердечком, и она появится здесь.'
+    : 'По этому запросу ничего не нашлось.'));
   $('#phrase-grid').replaceChildren(fragment);
   $('#phrase-count').textContent = 'Фраз найдено: ' + entries.length;
-  $('#show-more').hidden = Boolean(query || favoritesOnly || entries.length <= 6);
+  $('#show-more').hidden = Boolean(lesson || query || favoritesOnly || entries.length <= 6);
+  $('#lesson-quiz').hidden = !lesson;
   $('#show-more').textContent = showAllPhrases ? 'Свернуть словарь' : 'Показать все ' + entries.length + ' фраз';
 }
 
@@ -754,13 +775,21 @@ function startChapterQuiz(chapter) {
   });
 }
 
-function launchQuiz({ direction, category, eligible, chapter, mistakesOnly = false }) {
+function startLessonQuiz(lesson) {
+  location.hash = '#practice';
+  launchQuiz({
+    direction: $('#quiz-direction').value, category: 'all', lesson,
+    eligible: (phrase) => phrase.lessons.has(lesson)
+  });
+}
+
+function launchQuiz({ direction, category, eligible, chapter, lesson, mistakesOnly = false }) {
   stopSpeech();
   const questions = quizQuestions([...phrases.values()], {
     direction, category, eligible, size: 5, allDistractors: mistakesOnly
   }, shuffle);
-  quiz = { questions, direction, chapter, mistakesOnly, index: 0, score: 0, mistakes: 0 };
-  $('#quiz-start').firstChild.textContent = chapter || mistakesOnly ? 'Начать обычный тест ' : 'Начать заново ';
+  quiz = { questions, direction, chapter, lesson, mistakesOnly, index: 0, score: 0, mistakes: 0 };
+  $('#quiz-start').firstChild.textContent = chapter || lesson || mistakesOnly ? 'Начать обычный тест ' : 'Начать заново ';
   renderQuiz();
   $('#quiz').scrollIntoView({ block: 'nearest' });
 }
@@ -771,11 +800,12 @@ function renderQuiz() {
   step.tabIndex = -1;
   card.append(step);
   if (quiz.chapter) card.append(elem('p', 'chapter-quiz-name', 'Проверка главы «' + quiz.chapter.title + '»'));
+  if (quiz.lesson) card.append(elem('p', 'chapter-quiz-name', 'Тест по уроку «' + stories.get(quiz.lesson).title + '»'));
   if (quiz.mistakesOnly) card.append(elem('p', 'chapter-quiz-name', 'Работа над ошибками'));
   const question = quiz.questions[quiz.index];
   if (!question) {
     const before = experience();
-    if (!quiz.mistakesOnly && quiz.questions.length === 5) {
+    if (!quiz.mistakesOnly && !quiz.lesson && quiz.questions.length === 5) {
       progress.bestQuiz = Math.max(progress.bestQuiz, quiz.score);
       passDailyQuiz(progress.game, localDay(), quiz.score);
       if (quiz.chapter) {
@@ -802,9 +832,9 @@ function renderQuiz() {
     } else if (quiz.mistakesOnly) {
       card.append(elem('p', 'feedback', 'Все ошибки разобраны!'));
     }
-    const chapter = quiz.chapter;
+    const { chapter, lesson } = quiz;
     card.append(button('button button-outline', chapter ? 'Повторить проверку' : quiz.mistakesOnly ? 'К обычному тесту' : 'Новые вопросы',
-      chapter ? () => startChapterQuiz(chapter) : startQuiz));
+      chapter ? () => startChapterQuiz(chapter) : lesson ? () => startLessonQuiz(lesson) : startQuiz));
   } else {
     const prompt = quiz.direction === 'ru-kk' ? elem('p', 'phrase-text', question.prompt) : kazakh('p', 'phrase-text', question.prompt);
     card.append(prompt);
@@ -972,6 +1002,12 @@ $('#phrase-search').addEventListener('input', () => {
   stopSpeech();
   renderDictionary();
 });
+$('#phrase-lesson').addEventListener('change', () => {
+  stopSpeech();
+  showAllPhrases = false;
+  renderDictionary();
+});
+$('#lesson-quiz').addEventListener('click', () => startLessonQuiz($('#phrase-lesson').value));
 $('#favorite-filter').addEventListener('click', (event) => {
   stopSpeech();
   favoritesOnly = !favoritesOnly;
@@ -1050,6 +1086,11 @@ for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]
 }
 $('#story-total').textContent = TIL_STORIES.length + ' уроков A1–A2';
 $('#ending-total').textContent = totalEndings + ' концовки';
+for (const id of lessonOrder) {
+  const option = elem('option', '', stories.get(id).title);
+  option.value = id;
+  $('#phrase-lesson').append(option);
+}
 window.addEventListener('hashchange', updateNavigation);
 updateNavigation();
 renderStories();

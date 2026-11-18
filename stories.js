@@ -225,5 +225,6 @@ export const TIL_ROUTE = [
   { id: 'friends', title: 'Время с друзьями', level: 'A2', ids: ['meeting', 'cinema', 'sport'] },
   { id: 'career', title: 'Учёба и карьера', level: 'A1–A2', ids: ['club', 'library', 'interview'] },
   { id: 'travel', title: 'В пути', level: 'A2', ids: ['station', 'hotel', 'trip'] },
-  { id: 'errands', title: 'Решаем вопросы', level: 'A2', ids: ['pharmacy', 'parcel', 'teamwork'] }
+  { id: 'errands', title: 'Решаем вопросы', level: 'A2', ids: ['pharmacy', 'parcel', 'teamwork'] },
+  { id: 'community', title: 'Город и инициативы', level: 'A2', ids: ['volunteer', 'hackathon', 'lost-found'] }
 ];

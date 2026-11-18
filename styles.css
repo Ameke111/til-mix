@@ -149,6 +149,9 @@ section { scroll-margin-top: 90px; }
 
 .dictionary { margin-top: 18px; border-top: 1px solid var(--line); }
 .search { width: min(100%, 465px); min-height: 44px; border: 1px solid #cfd6c7; background: #fffcf6; padding: 10px 13px; border-radius: 10px; }
+.dictionary-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.dictionary-filters label { flex: 1 1 240px; display: grid; min-width: 0; gap: 5px; font-size: .82rem; font-weight: 800; color: var(--muted); }
+.dictionary-filters .search { width: 100%; color: var(--ink); font-size: .9rem; font-weight: 600; }
 .phrase-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
 .phrase-card { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--white); }
 .phrase-card p + p { margin-top: 4px; }

@@ -160,8 +160,15 @@
         <div><p class="eyebrow"><span aria-hidden="true">✳</span> ФРАЗЫ ИЗ ИСТОРИЙ</p><h2 id="dictionary-title">Словарь<span>.</span></h2></div>
         <button class="button button-outline" id="favorite-filter" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Избранное</button>
       </div>
-      <label class="sr-only" for="phrase-search">Поиск по словарю</label>
-      <input class="search" id="phrase-search" type="search" placeholder="Найди фразу на русском или казахском">
+      <div class="dictionary-filters">
+        <label for="phrase-search">Поиск по словарю
+          <input class="search" id="phrase-search" type="search" placeholder="На русском или казахском">
+        </label>
+        <label for="phrase-lesson">Урок
+          <select class="search" id="phrase-lesson"><option value="">Все уроки</option></select>
+        </label>
+        <button class="button button-primary" id="lesson-quiz" type="button" hidden>Тест по уроку ↗</button>
+      </div>
       <p class="sr-only" id="phrase-count" aria-live="polite"></p>
       <div class="phrase-grid" id="phrase-grid"></div>
       <button class="button button-outline" id="show-more" type="button">Показать все фразы</button>
