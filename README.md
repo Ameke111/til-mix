@@ -33,7 +33,7 @@ npm start
 
 [GitHub Pages](https://ameke111.github.io/til-mix/) и `npm run dev` запускают гостевой вариант. Публичная серверная площадка потребует выбранного хостинга, HTTPS с точным `TIL_ORIGIN`, настройки оператора данных и плана резервных копий. Локальный запуск рассчитан на loopback. [Решение по аккаунтам](course/adr-002.md)
 
-Vite собирает приложение в `dist/`. Сценарии находятся в `stories.js` и `extra-stories.js`, повторы — в `learning.js`, XP и задания дня — в `game.js`, конструктор фраз — в `studio.js` и `studio-ui.js`, SQLite и API — в `server.js`.
+esbuild собирает приложение в `dist/`. `npm run preview` открывает гостевую сборку на порту 4174. Сценарии находятся в `stories.js` и `extra-stories.js`, повторы — в `learning.js`, XP и задания дня — в `game.js`, тренажёр фраз — в `studio.js` и `studio-ui.js`, SQLite и API — в `server.js`.
 
 ## Панель владельца
 
