@@ -86,7 +86,8 @@ test('chapter stars follow the published thresholds and backup merges retain onl
 
 test('the practice calendar preserves legacy days and merges modes from the same day', () => {
   const current = normalizeGame({}, phrases);
-  const incoming = normalizeGame({ activity: { [day]: 26, [day - 1]: 32, invalid: 3 } }, phrases);
+  const incoming = normalizeGame({ activity: { [day]: 26, [day - 1]: 64, invalid: 3 } }, phrases);
+  markPractice(current.activity, day, 'speaking');
   markPractice(current.activity, day, 'story');
   markPractice(current.activity, day, 'story');
   mergeGame(current, incoming);
@@ -96,7 +97,7 @@ test('the practice calendar preserves legacy days and merges modes from the same
   assert.deepEqual(calendar.slice(-3), [
     { date: day - 2, types: [], active: true },
     { date: day - 1, types: [], active: false },
-    { date: day, types: ['story', 'quiz', 'studio', 'listening'], active: true }
+    { date: day, types: ['story', 'quiz', 'studio', 'listening', 'speaking'], active: true }
   ]);
 });
 

@@ -20,6 +20,7 @@
         <a href="#stories">Истории</a>
         <a href="#studio">Фразы</a>
         <a href="#listening">На слух</a>
+        <a href="#speaking">Говори</a>
         <a href="#dictionary">Словарь</a>
         <a href="#practice">Тренировка</a>
       </nav>
@@ -149,6 +150,32 @@
       </div>
       <div class="listening-stage" id="listening-stage">
         <div class="listening-preview" aria-hidden="true"><div class="listening-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      </div>
+    </section>
+
+    <section class="speaking" id="speaking" aria-labelledby="speaking-title">
+      <div class="speaking-intro">
+        <h2 id="speaking-title">Произношение<span>.</span></h2>
+        <p>Послушай образец, произнеси фразу и сравни свою запись с ним.</p>
+        <p>Запись остаётся на устройстве. При первой проверке слов браузер скачивает около 65 МБ.</p>
+      </div>
+      <div class="speaking-card">
+        <p id="speaking-step" class="speaking-step"></p>
+        <h3 id="speaking-phrase" lang="kk" tabindex="-1"></h3>
+        <p id="speaking-translation"></p>
+        <a id="speaking-lesson" class="text-button"></a>
+        <div class="speaking-controls">
+          <button id="speaking-hear" class="button button-outline" type="button">Послушать образец</button>
+          <button id="speaking-mic" class="button button-primary" type="button">Записать голос</button>
+        </div>
+        <p id="speaking-status" class="speaking-status" role="status"></p>
+        <audio id="speaking-example" preload="metadata"></audio>
+        <audio id="speaking-playback" aria-label="Прослушать свою запись" controls hidden></audio>
+        <div id="speaking-result" class="speaking-result" role="status"></div>
+        <div class="speaking-controls">
+          <button id="speaking-check" class="button button-outline" type="button" hidden>Проверить слова</button>
+          <button id="speaking-next" class="button button-outline" type="button">Следующая фраза →</button>
+        </div>
       </div>
     </section>
 

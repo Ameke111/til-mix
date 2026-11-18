@@ -23,6 +23,7 @@
 .calendar-days li[data-intensity="3"] { background: #729953; }
 .calendar-days li[data-intensity="4"] { background: #456f42; }
 .calendar-days li[data-intensity="5"] { background: #2a5032; }
+.calendar-days li[data-intensity="6"] { background: #183b28; }
 .calendar-days li[aria-current="date"] { outline: 2px solid #476053; outline-offset: 1px; }
 .calendar-legend { line-height: 1.4; }
 .studio-input {

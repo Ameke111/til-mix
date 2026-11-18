@@ -1,6 +1,6 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { createReadStream, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
@@ -111,7 +111,7 @@ function validationHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; worker-src 'self'; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
 }
 
 function safeProgress(data) {
@@ -334,10 +334,26 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : page);
       }
+      if (path === '/assets/vosk-model-small-kz-0.42.tar.gz') {
+        const modelPath = resolve(staticDir, 'assets', 'vosk-model-small-kz-0.42.tar.gz');
+        res.writeHead(200, {
+          'Content-Type': 'application/gzip', 'Content-Length': statSync(modelPath).size,
+          'Cache-Control': 'public, max-age=31536000, immutable'
+        });
+        if (req.method === 'HEAD') return res.end();
+        const stream = createReadStream(modelPath);
+        res.on('close', () => stream.destroy());
+        stream.on('error', () => res.destroy());
+        return stream.pipe(res);
+      }
       const asset = path.match(/^\/assets\/([a-zA-Z0-9_-]+\.(js|css|svg|wav))$/);
       if (!asset) throw new RequestError(404, 'not_found', 'Такой страницы нет.');
       const file = readFileSync(resolve(staticDir, 'assets', asset[1]));
       const headers = { 'Content-Type': types[asset[2]], 'Cache-Control': 'public, max-age=31536000, immutable' };
+      if (asset[1] === 'vosk-worker-0-0-8.js') {
+        // Emscripten's generated bindings use eval inside the worker, not in the page.
+        headers['Content-Security-Policy'] = "default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'self'";
+      }
       if (asset[2] === 'wav') return sendRecording(req, res, file, headers);
       res.writeHead(200, headers);
       res.end(req.method === 'HEAD' ? undefined : file);
