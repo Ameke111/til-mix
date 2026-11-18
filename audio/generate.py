@@ -12,13 +12,18 @@ from piper import PiperVoice, SynthesisConfig
 folder = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("model", type=Path, help="The ISSAI Piper ONNX file, next to its .onnx.json.")
+parser.add_argument("--only", nargs="+", help="Regenerate these clip IDs only.")
 args = parser.parse_args()
 
 source = "import { LISTENING_CLIPS } from './listening.js'; console.log(JSON.stringify(LISTENING_CLIPS));"
 clips = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", source], cwd=folder.parent))
+if args.only and set(args.only) - {clip["id"] for clip in clips}:
+    parser.error("--only must contain known clip IDs.")
 voice = PiperVoice.load(args.model)
 
 for index, clip in enumerate(clips):
+    if args.only and clip["id"] not in args.only:
+        continue
     speaker = 0 if index % 2 == 0 else 2
     chunks = list(voice.synthesize(clip["kk"], SynthesisConfig(speaker_id=speaker)))
     if not chunks:
