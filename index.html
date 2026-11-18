@@ -29,6 +29,12 @@
     </div>
   </header>
 
+  <div class="wrap demo-banner" id="demo-banner" hidden>
+    <p><strong>Демо Тіл Mix</strong> · учебные аккаунты и обращения</p>
+    <button class="button button-outline" id="open-demo-admin" type="button">Открыть демо-админку ↗</button>
+    <p class="form-status" id="demo-status" role="status"></p>
+  </div>
+
   <main class="wrap" id="main">
     <section class="hero" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
@@ -57,6 +63,39 @@
       <li><span class="fact-icon" aria-hidden="true">ϟ</span><div><b id="streak-text">Серия: 0 дней</b><span>Диалог, тест или повторение</span></div></li>
       <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="ending-total">Концовки</b><span>Реплики меняют сюжет</span></div></li>
     </ul>
+
+    <section class="companion" id="companion" aria-labelledby="companion-title">
+      <div class="companion-head">
+        <h2 id="companion-title">Түлкі <span>· твой спутник</span></h2>
+        <button class="text-button" id="companion-toggle" type="button" aria-controls="companion-body" aria-expanded="true">Свернуть</button>
+      </div>
+      <div class="companion-body" id="companion-body">
+        <div class="fox-scene" aria-hidden="true">
+          <div class="fox-sparkle fox-sparkle-top">✦</div>
+          <div class="fox-sparkle fox-sparkle-bottom">✧</div>
+          <div class="fox" id="fox">
+            <span class="fox-tail"></span><span class="fox-body"></span><span class="fox-paws"></span>
+            <div class="fox-head"><span class="fox-ear fox-ear-left"></span><span class="fox-ear fox-ear-right"></span><span class="fox-face"></span><span class="fox-eye fox-eye-left"></span><span class="fox-eye fox-eye-right"></span><span class="fox-nose"></span></div>
+          </div>
+        </div>
+        <div class="companion-guide">
+          <p id="companion-line">Сәлем! Готов к разговору?</p>
+          <div class="companion-actions">
+            <a class="button button-primary" id="companion-next" href="#path">К урокам ↗</a>
+            <button class="button button-outline" id="companion-pet" type="button">Погладить</button>
+          </div>
+          <span id="companion-status" class="sr-only" role="status"></span>
+        </div>
+        <div class="companion-phrase">
+          <p class="companion-label">Фраза дня</p>
+          <p id="companion-kk" lang="kk"></p>
+          <p id="companion-ru"></p>
+          <div class="companion-actions" id="companion-phrase-actions">
+            <button class="text-button" id="companion-save" type="button">В карточки ↗</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section class="learning-path" id="path" aria-labelledby="path-title">
       <div class="section-head">

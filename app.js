@@ -6,6 +6,7 @@ import { masterStudio } from './studio.js';
 import { setupStudio } from './studio-ui.js';
 import { markPractice } from './activity.js';
 import { activityCalendar, renderWeek } from './activity-ui.js';
+import { setupCompanion } from './companion-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -112,6 +113,7 @@ function completeEnding(session, key) {
   }
   endingReward = experience() - before;
   renderRoute();
+  companion.react('story');
 }
 
 function recordActivity(type, day = localDay()) {
@@ -121,7 +123,12 @@ function recordActivity(type, day = localDay()) {
 
 function renderWeekSummary() {
   const day = localDay();
-  renderWeek(day, progress.activeDays, account.getGoal(), duePhrases(progress.review, day).length);
+  const due = duePhrases(progress.review, day).length;
+  renderWeek(day, progress.activeDays, account.getGoal(), due);
+  companion.update({
+    day, due, practiced: progress.activeDays.length > 0,
+    resumed: Object.entries(progress.sessions).some(([id, session]) => isStoryInProgress(stories.get(id), session))
+  });
 }
 
 function renderGame(stats, day) {
@@ -240,6 +247,7 @@ function snapshot() {
 }
 
 function swapProgress(raw) {
+  companion.reset();
   if (storyDialog.open) storyDialog.close();
   stopSpeech();
   progress = readProgress(raw);
@@ -750,6 +758,7 @@ function renderQuiz() {
     }
     if (quiz.questions.length) recordActivity('quiz');
     renderRoute();
+    if (quiz.questions.length) companion.react(quiz.score >= 3 ? 'quiz' : 'retry');
     save();
     card.append(elem('p', 'phrase-text', 'Твой результат — ' + quiz.score + ' из ' + quiz.questions.length));
     if (quiz.chapter) {
@@ -969,11 +978,20 @@ function updateNavigation() {
   }
 }
 
+const companion = setupCompanion({
+  phrases: [...phrases.values()], audioButton,
+  hasCard: (phrase) => Object.hasOwn(progress.review, phrase),
+  addCard(phrase) {
+    addToReview(phrase);
+    save();
+  }
+});
 const studio = setupStudio({
   elem, button, kazakh, audioButton, stopSpeech, shuffle,
   readSolved: (mode) => mode === 'typing' ? progress.game.writing : progress.game.studio,
   onMiss(phrase) {
     addToReview(phrase, true);
+    companion.react('retry');
     save();
   },
   onSolve(id, clean, mode) {
@@ -981,6 +999,7 @@ const studio = setupStudio({
     const reward = masterStudio(solved, id, clean, mode);
     recordActivity('studio');
     renderRoute();
+    companion.react('phrase');
     save();
     return reward;
   }

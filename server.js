@@ -5,11 +5,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { defaultDatabase, openDatabase } from './database.js';
+import { demoLogin, seedDemo } from './demo-data.js';
 
 const keyFor = promisify(scrypt);
 const hashOptions = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
 const sessionSeconds = 7 * 24 * 60 * 60;
-const cookieName = 'til_session';
 const bodyLimit = 128 * 1024;
 const feedbackCategories = new Set(['lesson', 'interface', 'idea']);
 const types = { js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml' };
@@ -77,13 +77,13 @@ function sessionDigest(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 
-function sessionId(req) {
+function sessionId(req, cookieName) {
   const entry = req.headers.cookie?.split(';').map((value) => value.trim()).find((value) => value.startsWith(cookieName + '='));
   const token = entry?.slice(cookieName.length + 1);
   return token && /^[A-Za-z0-9_-]{43}$/.test(token) ? sessionDigest(token) : null;
 }
 
-function expiredCookie(secure) {
+function expiredCookie(secure, cookieName) {
   return cookieName + '=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0' + (secure ? '; Secure' : '');
 }
 
@@ -121,10 +121,15 @@ function createThrottle() {
   };
 }
 
-export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origin = 'http://127.0.0.1:4173' } = {}) {
+export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origin = 'http://127.0.0.1:4173', demo = false } = {}) {
+  if (demo && (dbPath !== ':memory:' || new URL(origin).hostname !== '127.0.0.1')) {
+    throw new Error('Демо запускается только на 127.0.0.1 с базой в памяти.');
+  }
   const publicOrigin = new URL(origin).origin;
   const secure = publicOrigin.startsWith('https:');
+  const cookieName = demo ? 'til_demo_session' : 'til_session';
   const db = openDatabase(dbPath);
+  if (demo) seedDemo(db);
   const q = (sql) => db.prepare(sql);
   const fetchLogin = q('SELECT * FROM accounts WHERE login = ?');
   const fetchAccount = q('SELECT * FROM accounts WHERE id = ?');
@@ -163,7 +168,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
 
   function signIn(req, res, account, status) {
     const token = randomBytes(32).toString('base64url');
-    const current = sessionId(req);
+    const current = sessionId(req, cookieName);
     if (current) deleteSession.run(current);
     const now = Date.now();
     expireSessions.run(now);
@@ -207,11 +212,19 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
       throw new RequestError(403, 'origin', 'Открой форму с адреса этого приложения.');
     }
     const ip = req.socket.remoteAddress || 'local';
-    const digest = sessionId(req);
+    const digest = sessionId(req, cookieName);
     const account = digest ? findSession.get(digest, Date.now()) : undefined;
     const method = req.method;
     if (method === 'GET' && path === '/api/health') return reply(res, 200, { ok: true });
     if (method === 'GET' && path === '/api/account') return reply(res, 200, account ? expose(account) : { user: null });
+    if (path === '/api/demo/admin' && method === 'POST') {
+      if (!demo || req.socket.remoteAddress !== '127.0.0.1') {
+        throw new RequestError(404, 'not_found', 'Такой страницы нет.');
+      }
+      const owner = fetchLogin.get(demoLogin);
+      if (!owner?.admin) throw new RequestError(409, 'demo_reset', 'Перезапусти демо, чтобы восстановить аккаунт.');
+      return signIn(req, res, owner, 200);
+    }
     if (method === 'POST' && path === '/api/register') {
       throttle('register:' + ip, 8, 15 * 60 * 1000);
       const body = await jsonBody(req);
@@ -236,7 +249,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
     }
     if (method === 'POST' && path === '/api/logout') {
       if (digest) deleteSession.run(digest);
-      return reply(res, 200, { user: null }, { 'Set-Cookie': expiredCookie(secure) });
+      return reply(res, 200, { user: null }, { 'Set-Cookie': expiredCookie(secure, cookieName) });
     }
     if (!account) throw loginRequired();
     if (path.startsWith('/api/admin/')) return serveAdmin(req, res, url, account);
@@ -252,7 +265,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
       const body = await jsonBody(req);
       if (!await verifyPassword(account, passwordInput(body.password))) throw invalidCredentials();
       q('DELETE FROM accounts WHERE id = ?').run(account.id);
-      return reply(res, 200, { user: null }, { 'Set-Cookie': expiredCookie(secure) });
+      return reply(res, 200, { user: null }, { 'Set-Cookie': expiredCookie(secure, cookieName) });
     }
     if (method === 'PUT' && path === '/api/progress') {
       const body = await jsonBody(req);
@@ -296,7 +309,8 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
       if (req.method !== 'GET' && req.method !== 'HEAD') throw new RequestError(405, 'method', 'Метод не поддерживается.');
       if (path === '/' || path === '/index.html') {
         const page = readFileSync(resolve(staticDir, 'index.html'), 'utf8')
-          .replace('</head>', '<meta name="til-server" content="accounts"></head>');
+          .replace('</head>', '<meta name="til-server" content="accounts">'
+            + (demo ? '<meta name="til-demo" content="owner">' : '') + '</head>');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : page);
       }
