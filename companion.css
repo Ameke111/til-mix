@@ -65,17 +65,31 @@
 .fox-sparkle-top { top: 6px; right: 12px; }
 .fox-sparkle-bottom { bottom: 15px; left: 0; color: #8465aa; }
 .companion[data-reaction="cheer"] .fox-sparkle { opacity: 1; transform: scale(1.2) rotate(-12deg); }
-.companion[data-reaction="think"] .fox-head { transform: rotate(-10deg); }
-.fox-head { transition: transform .22s; }
+.companion[data-reaction="think"] { --fox-angle: -10deg; }
+.fox-head { transform: rotate(calc(var(--fox-angle, 0deg) * var(--fox-facing, 1))); transition: transform .17s ease-out; }
+.fox-eye { translate: calc(var(--fox-eye-x, 0px) * var(--fox-facing, 1)) var(--fox-eye-y, 0px); transition: translate .14s ease-out; }
+.companion[data-curious] .fox-tail { animation-duration: .9s; }
+.companion[data-roaming] .fox { animation: fox-turn var(--fox-roam-time) steps(1, end); }
+.companion[data-roaming] .fox-float { animation: fox-stride .29s ease-in-out infinite; }
+.companion[data-roaming] .fox-tail { animation-duration: .62s; }
+.companion[data-roaming] .fox-shadow { animation-duration: .29s; }
+.companion[data-roaming] .fox-paws { animation: fox-paws .29s ease-in-out infinite; }
 @keyframes fox-blink { 0%, 44%, 47%, 100% { transform: scaleY(1); } 45%, 46% { transform: scaleY(.13); } }
 @keyframes fox-wag { 0%, 100% { transform: rotate(-37deg); } 30% { transform: rotate(-24deg); } 70% { transform: rotate(-48deg); } }
 @keyframes fox-float { 0%, 100% { transform: translateY(-2px) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
 @keyframes fox-shadow { 0%, 100% { transform: scaleX(1); opacity: .9; } 50% { transform: scaleX(.78); opacity: .55; } }
+@keyframes fox-turn {
+  0% { scale: 1 1; --fox-facing: 1; }
+  50%, 100% { scale: -1 1; --fox-facing: -1; }
+}
+@keyframes fox-stride { 0%, 100% { transform: translateY(-1px) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+@keyframes fox-paws { 0%, 100% { translate: -4px 0; } 50% { translate: 4px -3px; } }
 @media (max-width: 690px) {
   .companion { right: max(9px, env(safe-area-inset-right)); width: 81px; height: 78px; }
   .fox-float { scale: .7; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fox-float, .fox-shadow, .fox-eye, .fox-tail { animation: none; }
-  .fox-head, .fox-sparkle { transition: none; }
+  .companion .fox-float, .companion .fox-shadow, .companion .fox-eye, .companion .fox-tail,
+  .companion[data-roaming] .fox, .companion[data-roaming] .fox-float, .companion[data-roaming] .fox-paws { animation: none; }
+  .fox-head, .fox-eye, .fox-sparkle { transition: none; }
 }
