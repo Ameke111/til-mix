@@ -17,13 +17,15 @@
       <a class="brand" href="#top" aria-label="Тіл Mix — главная"><span class="brand-mark" aria-hidden="true">Т</span><span>Тіл<span class="brand-space"> </span>Mix<span class="brand-dot">.</span></span></a>
       <nav class="nav" aria-label="Основная навигация">
         <a href="#path" aria-current="location">Маршрут</a>
+        <a href="#stories">Уроки</a>
         <details class="learning-menu" id="learning-menu">
-          <summary>Занятия <span aria-hidden="true">⌄</span></summary>
+          <summary>Практика <span aria-hidden="true">⌄</span></summary>
           <div class="learning-menu-panel">
-            <div><span class="menu-label">Изучай</span><a href="#stories">Диалоговые уроки</a><a href="#dictionary">Словарь</a><a href="#assistant">ИИ-помощник</a></div>
-            <div><span class="menu-label">Практикуй</span><a href="#studio">Собери и напиши фразу</a><a href="#practice">Проверка перевода</a><a href="#review">Карточки на повторение</a><a href="#listening" data-kazakh-only>Аудирование</a><a href="#speaking" data-kazakh-only>Произношение</a></div>
+            <div><span class="menu-label">Слова и память</span><a href="#dictionary">Словарь</a><a href="#review">Карточки на повторение</a></div>
+            <div><span class="menu-label">Тренажёры</span><a href="#studio">Собери и напиши фразу</a><a href="#practice">Проверка перевода</a><a href="#listening" data-kazakh-only>Аудирование</a><a href="#speaking" data-kazakh-only>Произношение</a></div>
           </div>
         </details>
+        <a href="#assistant">ИИ-помощник</a>
       </nav>
       <div class="header-actions">
         <label class="course-picker"><span class="sr-only">Язык обучения</span><select id="course-language"><option value="kk">Қазақша</option><option value="en">English</option><option value="tr">Türkçe</option></select></label>
@@ -123,12 +125,18 @@
         <div class="filters" id="story-filters" role="group" aria-label="Темы историй"></div>
         <div class="catalogue-fields">
           <label class="sr-only" for="story-search">Найти урок</label>
-          <input class="search" type="search" id="story-search" placeholder="Найди урок">
+          <input class="search" type="search" id="story-search" placeholder="Тема, фраза или перевод">
+          <label class="sr-only" for="story-level">Уровень урока</label>
+          <select id="story-level"><option value="all">Все уровни</option><option value="A1">A1 · Начальный</option><option value="A2">A2 · Продолжающий</option></select>
           <label class="sr-only" for="story-progress-filter">Прогресс урока</label>
           <select id="story-progress-filter"><option value="all">Любой прогресс</option><option value="new">Не начаты</option><option value="started">В процессе</option><option value="done">Уже пройдены</option><option value="mastered">Все концовки</option></select>
+          <label class="sr-only" for="story-sort">Порядок уроков</label>
+          <select id="story-sort"><option value="route">По маршруту</option><option value="recent">Недавно открытые</option><option value="new">Сначала новые</option><option value="title">По названию</option></select>
         </div>
       </div>
+      <div class="catalogue-selection"><p id="catalogue-course"></p><button class="text-button" type="button" id="reset-story-filters" hidden>Сбросить фильтры</button></div>
       <div id="story-grid" class="story-grid"></div>
+      <div class="catalogue-empty" id="story-empty" hidden><span aria-hidden="true">⌕</span><h3>Пока нет совпадений</h3><p>Попробуй другую фразу, уровень или тему. Можно начать со всех уроков курса.</p><button class="button button-primary" id="show-course-lessons" type="button">Показать все уроки</button></div>
       <div class="catalogue-foot"><p id="story-results" role="status"></p><button type="button" class="button button-outline" id="more-stories">Показать ещё ↓</button></div>
     </section>
 

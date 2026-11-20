@@ -14,6 +14,7 @@ import { setupListening } from './listening-ui.js';
 import { setupSpeaking } from './speaking-ui.js';
 import { setupAssistant } from './assistant-ui.js';
 import { LANGUAGES, storyLanguage } from './languages.js';
+import { selectLessons } from './catalogue.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -416,21 +417,15 @@ function isStoryInProgress(story, session) {
 
 function renderStories() {
   const fragment = document.createDocumentFragment();
-  const query = $('#story-search').value.trim().toLowerCase();
+  const query = $('#story-search').value.trim();
   const filter = $('#story-progress-filter').value;
-  const meetsProgress = (story) => {
-    const session = progress.sessions[story.id];
-    if (filter === 'started') return isStoryInProgress(story, session);
-    if (filter === 'new') return !session?.endings.length && !isStoryInProgress(story, session);
-    if (filter === 'done') return Boolean(session?.endings.length);
-    if (filter === 'mastered') return session?.endings.length === story.endingCount;
-    return true;
-  };
-  const matches = lessonOrder.map((id) => stories.get(id)).filter((story) =>
-    (activeCategory === 'all' || story.category === activeCategory)
-    && (story.title + ' ' + story.word + ' ' + story.description).toLowerCase().includes(query)
-    && meetsProgress(story)
-  );
+  const level = $('#story-level').value;
+  const sort = $('#story-sort').value;
+  const matches = selectLessons(lessonOrder.map((id) => stories.get(id)), progress.sessions,
+    { language: activeLanguage, query, category: activeCategory, level, progress: filter, sort });
+  $('#catalogue-course').textContent = LANGUAGES[activeLanguage].native + ' · ' + lessonOrder.length + ' уроков в курсе';
+  $('#reset-story-filters').hidden = !query && activeCategory === 'all' && filter === 'all' && level === 'all' && sort === 'route';
+  $('#story-empty').hidden = matches.length !== 0;
   const page = matches.slice(0, visibleStories);
   for (const [index, story] of page.entries()) {
     const card = $('#card-template').content.firstElementChild.cloneNode(true);
@@ -440,6 +435,7 @@ function renderStories() {
     card.style.animationDelay = Math.min(index * 35, 150) + 'ms';
     card.querySelector('.card-tag').textContent = TIL_CATEGORIES[story.category];
     card.querySelector('.card-word').textContent = story.word;
+    card.querySelector('.card-word').lang = activeLanguage;
     card.querySelector('.card-meta').textContent = story.level + ' · ' + story.minutes + ' мин';
     if (session?.endings.length) {
       const mastered = session.endings.length === story.endingCount;
@@ -475,8 +471,8 @@ function openStory(id, trigger, fromDemo = false) {
   if (currentStory.scenes[session.scene].end) session.scene = 'start';
   if (fromDemo && currentStory.id === 'coffee' && session.scene === 'start') {
     session.scene = 'latte';
-    session.updated = Date.now();
   }
+  session.updated = Date.now();
   save();
   $('#story-title').textContent = currentStory.title;
   $('#story-share-link').hidden = true;
@@ -1061,7 +1057,7 @@ $('#story-search').addEventListener('input', () => {
   visibleStories = catalogueBatch;
   renderStories();
 });
-$('#story-progress-filter').addEventListener('change', () => {
+for (const id of ['story-progress-filter', 'story-level', 'story-sort']) $('#' + id).addEventListener('change', () => {
   visibleStories = catalogueBatch;
   renderStories();
 });
@@ -1072,6 +1068,21 @@ $('#more-stories').addEventListener('click', () => {
   $('#story-grid').children[firstNew]?.querySelector('button').focus();
 });
 
+function resetStoryFilters() {
+  activeCategory = 'all';
+  for (const control of document.querySelectorAll('[data-filter]')) control.setAttribute('aria-pressed', String(control.dataset.filter === 'all'));
+  $('#story-search').value = '';
+  $('#story-progress-filter').value = 'all';
+  $('#story-level').value = 'all';
+  $('#story-sort').value = 'route';
+  visibleStories = catalogueBatch;
+}
+for (const id of ['reset-story-filters', 'show-course-lessons']) $('#' + id).addEventListener('click', () => {
+  resetStoryFilters();
+  renderStories();
+  $('#story-search').focus({ preventScroll: true });
+});
+
 function updateNavigation() {
   const section = location.hash || '#path';
   if (section !== '#speaking') speaking.stop();
@@ -1079,6 +1090,7 @@ function updateNavigation() {
     if (link.hash === section) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
   }
+  $('#learning-menu summary').classList.toggle('is-current', Boolean($('#learning-menu a[aria-current]')));
 }
 
 function changeLanguage(language, remember = true) {
@@ -1120,11 +1132,8 @@ function changeLanguage(language, remember = true) {
   $('#quiz-direction').options[1].textContent = 'Русский → ' + course.native;
   [...quizPlaceholder.children].forEach((node, index) => { node.textContent = { kk: ['Ә', 'Ң', 'І'], en: ['A', 'B', 'C'], tr: ['Ç', 'Ş', 'İ'] }[language][index]; });
   $('#phrase-lesson').replaceChildren(new Option('Все уроки', ''), ...lessonOrder.map((id) => new Option(stories.get(id).title, id)));
-  activeCategory = 'all';
-  for (const control of document.querySelectorAll('[data-filter]')) control.setAttribute('aria-pressed', String(control.dataset.filter === 'all'));
-  $('#story-search').value = '';
+  resetStoryFilters();
   $('#phrase-search').value = '';
-  $('#story-progress-filter').value = 'all';
   $('#studio-category').value = 'all';
   $('#quiz-category').value = 'all';
   visibleStories = catalogueBatch;
