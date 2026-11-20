@@ -18,6 +18,8 @@ import { selectLessons } from './catalogue.js';
 import { readBookmarks, setBookmark, mergeBookmarks, resumableLessons } from './lesson-library.js';
 import { reviewSelection } from './review-selection.js';
 import { createReviewRound, answerReview, reviewOutcome } from './review-round.js';
+import { studyPlan } from './study-plan.js';
+import { renderStudyPlan } from './study-plan-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -204,6 +206,7 @@ function renderGame(stats, day) {
 }
 
 function renderRoute() {
+  renderStudyCenter();
   const stats = gameStats(progress, stories);
   renderMistakes();
   renderGame(stats, localDay());
@@ -245,6 +248,32 @@ function renderRoute() {
     return item;
   });
   $('#path-steps').replaceChildren(...steps);
+}
+
+function renderStudyCenter() {
+  const plan = studyPlan({ stories: [...stories.values()], chapters: TIL_ROUTE, phrases: [...phrases.values()], progress, language: activeLanguage, day: localDay() });
+  renderStudyPlan($('#study-plan'), plan, {
+    elem, button, language: activeLanguage, languageName: LANGUAGES[activeLanguage].name,
+    openLesson: openStory, checkpoint: startChapterQuiz, audio: audioButton,
+    review: () => {
+      $('#review-category').value = 'all';
+      $('#review-lesson').value = '';
+      $('#review-mode').value = 'scheduled';
+      $('#review-direction').value = 'target-ru';
+      location.hash = '#review';
+      startReview();
+    },
+    dictionary: (lesson) => {
+      $('#phrase-search').value = '';
+      $('#phrase-lesson').value = lesson || '';
+      favoritesOnly = false;
+      $('#favorite-filter').setAttribute('aria-pressed', 'false');
+      showAllPhrases = false;
+      renderDictionary();
+      location.hash = '#dictionary';
+      $('#phrase-search').focus({ preventScroll: true });
+    }
+  });
 }
 
 function chapterRating(count) {
@@ -746,6 +775,7 @@ function selectedReview() {
 }
 
 function renderReviewSummary(message = '') {
+  renderStudyCenter();
   const selection = selectedReview();
   const free = $('#review-mode').value === 'free';
   const count = (free ? selection.all : selection.due).length;
@@ -1160,7 +1190,8 @@ storyDialog.addEventListener('close', () => {
   const previous = lastStoryButton?.dataset.story || currentStory.id;
   const selector = pathStep === undefined ? '.card-action[data-story="' + previous + '"]' : '[data-path-step="' + pathStep + '"]';
   const resume = lastStoryButton?.dataset.resumeStory && $('[data-resume-story="' + previous + '"]');
-  const target = lastStoryButton?.isConnected ? lastStoryButton : resume || document.querySelector(selector);
+  const studyButton = lastStoryButton?.id === 'study-open-lesson' && $('#study-open-lesson');
+  const target = lastStoryButton?.isConnected ? lastStoryButton : studyButton || resume || document.querySelector(selector);
   target?.focus({ preventScroll: true });
 });
 for (const control of document.querySelectorAll('[data-open-progress]')) control.addEventListener('click', openProgress);
