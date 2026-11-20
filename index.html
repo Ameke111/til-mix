@@ -207,6 +207,13 @@
         <p class="eyebrow"><span aria-hidden="true">✦</span> ПОВТОРЕНИЕ</p>
         <h2 id="review-title">Фразы на повтор<span>.</span></h2>
         <p>Сначала вспомни перевод, потом переверни карточку. Сложные фразы вернутся раньше.</p>
+        <div class="review-options">
+          <label>Тема карточек<select id="review-category"><option value="all">Все темы</option></select></label>
+          <label>Урок для повторения<select id="review-lesson"><option value="">Все уроки</option></select></label>
+          <label>Направление карточек<select id="review-direction"><option value="target-ru">Изучаемый → Русский</option><option value="ru-target">Русский → Изучаемый</option></select></label>
+          <label>Режим повторения<select id="review-mode"><option value="scheduled">По расписанию</option><option value="free">Свободная тренировка</option></select></label>
+        </div>
+        <p id="review-mode-note" class="review-mode-note">Повтори карточки, срок которых уже наступил.</p>
         <button class="button button-primary" id="review-start" type="button">Начать повторение <span aria-hidden="true">↗</span></button>
       </div>
       <div class="review-side">
