@@ -1,4 +1,5 @@
 import { TIL_STORIES } from './stories.js';
+import { storyLanguage } from './languages.js';
 
 const prompts = [
   ['coffee-order', 'coffee', 'Маған бір латте, өтінемін.', '«Маған» — «мне». Число стоит перед названием напитка.', ['Өтінемін, маған бір латте.']],
@@ -46,10 +47,17 @@ const prompts = [
 ];
 
 const byLesson = new Map(TIL_STORIES.map((story) => [story.id, story]));
+for (const story of TIL_STORIES.filter((story) => story.language)) {
+  const choices = Object.values(story.scenes).flatMap((scene) => scene.choices ?? [])
+    .filter(([text, , next]) => next && phraseWords(text).length >= 2).slice(0, 2);
+  choices.forEach(([text, , , tip], index) => {
+    prompts.push([story.id + '-' + index, story.id, text, tip]);
+  });
+}
 const masterPoints = 3;
 
-export function phraseWords(sentence) {
-  return sentence.normalize('NFC').toLowerCase().match(/[\p{L}\p{M}\p{N}]+(?:[-‑][\p{L}\p{M}\p{N}]+)*/gu) ?? [];
+export function phraseWords(sentence, language = 'kk') {
+  return sentence.normalize('NFC').toLocaleLowerCase(language).match(/[\p{L}\p{M}\p{N}]+(?:[-‑][\p{L}\p{M}\p{N}]+)*/gu) ?? [];
 }
 
 export const STUDIO_PROMPTS = prompts.map(([id, lesson, kk, tip, alternatives = []]) => {
@@ -58,7 +66,7 @@ export const STUDIO_PROMPTS = prompts.map(([id, lesson, kk, tip, alternatives = 
     scene.line, ...((scene.choices ?? []).filter((choice) => choice[2]))
   ]);
   const [, ru] = dialogue.find((line) => line[0] === kk);
-  return { id, lesson, category: story.category, title: story.title, kk, ru, tip, solutions: [kk, ...alternatives].map(phraseWords) };
+  return { id, lesson, language: storyLanguage(story), category: story.category, title: story.title, kk, ru, tip, solutions: [kk, ...alternatives].map((text) => phraseWords(text, storyLanguage(story))) };
 });
 const studioIds = new Set(STUDIO_PROMPTS.map(({ id }) => id));
 
@@ -66,10 +74,10 @@ export function readStudio(value) {
   return Array.isArray(value) ? [...new Set(value.filter((id) => studioIds.has(id)))] : [];
 }
 
-export function pickStudioRound({ lesson, category, solved, shuffle, size = 4 }) {
-  const pool = STUDIO_PROMPTS.filter((exercise) => lesson
+export function pickStudioRound({ lesson, category, solved, shuffle, size = 4, language }) {
+  const pool = STUDIO_PROMPTS.filter((exercise) => (!language || exercise.language === language) && (lesson
     ? exercise.lesson === lesson
-    : category === 'all' || exercise.category === category);
+    : category === 'all' || exercise.category === category));
   const mastered = new Set(solved);
   return [
     ...shuffle(pool.filter(({ id }) => !mastered.has(id))),
@@ -99,7 +107,7 @@ function matchesSolution(exercise, words) {
 }
 
 export function checkWrittenAnswer(exercise, answer) {
-  return matchesSolution(exercise, phraseWords(answer));
+  return matchesSolution(exercise, phraseWords(answer, exercise.language));
 }
 
 export function masterStudio(solved, id, clean, mode = 'tiles') {

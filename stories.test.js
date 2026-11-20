@@ -3,12 +3,22 @@ import test from 'node:test';
 import { TIL_CATEGORIES, TIL_ROUTE, TIL_STORIES } from './stories.js';
 
 test('stories have unique IDs, valid categories and exactly one chapter each', () => {
-  assert.equal(TIL_STORIES.length, 27);
-  assert.equal(TIL_ROUTE.length, 9);
+  assert.equal(TIL_STORIES.length, 51);
+  assert.equal(TIL_ROUTE.length, 17);
   assert.equal(new Set(TIL_STORIES.map(({ id }) => id)).size, TIL_STORIES.length);
   assert.deepEqual(TIL_ROUTE.flatMap(({ ids }) => ids).sort(), TIL_STORIES.map(({ id }) => id).sort());
   for (const story of TIL_STORIES) {
     assert.ok(Object.hasOwn(TIL_CATEGORIES, story.category), story.id);
+  }
+});
+
+test('each additional language has twelve lessons in four separate chapters', () => {
+  for (const language of ['en', 'tr']) {
+    const stories = TIL_STORIES.filter((story) => story.language === language);
+    const chapters = TIL_ROUTE.filter((chapter) => chapter.language === language);
+    assert.equal(stories.length, 12);
+    assert.equal(chapters.length, 4);
+    assert.deepEqual(chapters.flatMap(({ ids }) => ids).sort(), stories.map(({ id }) => id).sort());
   }
 });
 

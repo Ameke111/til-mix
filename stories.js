@@ -1,4 +1,5 @@
 import { EXTRA_STORIES } from './extra-stories.js';
+import { INTERNATIONAL_ROUTE, INTERNATIONAL_STORIES } from './international-stories.js';
 
 export const TIL_STORIES = [
   {
@@ -211,7 +212,8 @@ export const TIL_STORIES = [
       joined: { line: ['Керемет! Келесі кездесуге кел.', 'Класс! Приходи на следующую встречу.'], end: 'Приглашение в клуб' }
     }
   },
-  ...EXTRA_STORIES
+  ...EXTRA_STORIES,
+  ...INTERNATIONAL_STORIES
 ];
 
 export const TIL_CATEGORIES = {
@@ -228,5 +230,6 @@ export const TIL_ROUTE = [
   { id: 'errands', title: 'Решаем вопросы', level: 'A2', ids: ['pharmacy', 'parcel', 'teamwork'] },
   { id: 'community', title: 'Город и инициативы', level: 'A2', ids: ['volunteer', 'hackathon', 'lost-found'] },
   { id: 'everyday', title: 'Навыки на каждый день', level: 'A1–A2', ids: ['bike-rental', 'language-exchange', 'coworking'] },
-  { id: 'arrangements', title: 'Договорись по делу', level: 'A1–A2', ids: ['reschedule', 'return-order', 'workshop'] }
+  { id: 'arrangements', title: 'Договорись по делу', level: 'A1–A2', ids: ['reschedule', 'return-order', 'workshop'] },
+  ...INTERNATIONAL_ROUTE
 ];

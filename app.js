@@ -12,10 +12,19 @@ import { activityCalendar, renderWeek } from './activity-ui.js';
 import { setupCompanion, setupDailyPhrase } from './companion-ui.js';
 import { setupListening } from './listening-ui.js';
 import { setupSpeaking } from './speaking-ui.js';
+import { setupAssistant } from './assistant-ui.js';
+import { LANGUAGES, storyLanguage } from './languages.js';
+import { selectLessons } from './catalogue.js';
+import { readBookmarks, setBookmark, mergeBookmarks, resumableLessons } from './lesson-library.js';
+import { reviewSelection } from './review-selection.js';
+import { createReviewRound, answerReview, reviewOutcome } from './review-round.js';
+import { studyPlan } from './study-plan.js';
+import { renderStudyPlan } from './study-plan-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
 const progressDialog = $('#progress-dialog');
+const assistantDialog = $('#assistant-dialog');
 const sceneArea = $('#scene');
 const storageKey = 'til-mix-progress-v1';
 const stories = new Map(TIL_STORIES.map((story) => [story.id, {
@@ -23,7 +32,21 @@ const stories = new Map(TIL_STORIES.map((story) => [story.id, {
 }]));
 const phrases = new Map();
 const totalEndings = [...stories.values()].reduce((total, story) => total + story.endingCount, 0);
-const lessonOrder = TIL_ROUTE.flatMap(({ ids }) => ids);
+let activeLanguage = 'kk';
+try {
+  const requested = new URL(location.href).searchParams;
+  const shared = stories.get(requested.get('lesson'));
+  const language = shared ? storyLanguage(shared) : requested.get('lang') || localStorage.getItem('til-mix-language');
+  if (Object.hasOwn(LANGUAGES, language)) activeLanguage = language;
+} catch { /* Use the Kazakh course when preferences are unavailable. */ }
+let lessonOrder = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === activeLanguage).flatMap(({ ids }) => ids);
+
+function phraseLanguage(text) {
+  const lesson = phrases.get(text)?.lessons.values().next().value;
+  return lesson ? storyLanguage(stories.get(lesson)) : activeLanguage;
+}
+
+function currentPhrase(phrase) { return phraseLanguage(phrase.kk) === activeLanguage; }
 
 for (const story of TIL_STORIES) {
   for (const scene of Object.values(story.scenes)) {
@@ -57,6 +80,7 @@ function readProgress(raw) {
     }
     return {
       sessions,
+      bookmarks: readBookmarks(saved.bookmarks, stories),
       favorites: new Set(Array.isArray(saved.favorites) ? saved.favorites.filter((kk) => phrases.has(kk)) : []),
       bestQuiz: Number.isInteger(saved.bestQuiz) && saved.bestQuiz >= 0 && saved.bestQuiz <= 5 ? saved.bestQuiz : 0,
       translated: saved.translated !== false,
@@ -85,15 +109,18 @@ let activeCategory = 'all';
 const catalogueBatch = 6;
 let visibleStories = catalogueBatch;
 let favoritesOnly = false;
+let savedLessonsOnly = false;
 let showAllPhrases = false;
 let quiz;
 let reviewSession;
+let reviewReport;
 let activeAudio;
 let endingReward = 0;
 const quizPlaceholder = $('#quiz').firstElementChild.cloneNode(true);
 
 function challenge(day = localDay()) {
-  return TIL_STORIES[day % TIL_STORIES.length];
+  const course = TIL_STORIES.filter((story) => storyLanguage(story) === activeLanguage);
+  return course[day % course.length];
 }
 
 function streak() {
@@ -129,7 +156,7 @@ function recordActivity(type, day = localDay()) {
 
 function renderWeekSummary() {
   const day = localDay();
-  const due = duePhrases(progress.review, day).length;
+  const due = duePhrases(progress.review, day).filter((text) => phraseLanguage(text) === activeLanguage).length;
   renderWeek(day, progress.activeDays, account.getGoal(), due);
   renderDailyPhrase(day);
 }
@@ -179,6 +206,7 @@ function renderGame(stats, day) {
 }
 
 function renderRoute() {
+  renderStudyCenter();
   const stats = gameStats(progress, stories);
   renderMistakes();
   renderGame(stats, localDay());
@@ -186,9 +214,10 @@ function renderRoute() {
   listening.updateSummary();
   renderWeekSummary();
   $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
-  const firstUnfinished = TIL_ROUTE.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
-  $('#path-summary').textContent = 'Пройдено уроков: ' + stats.completed.size + ' из ' + TIL_STORIES.length;
-  const steps = TIL_ROUTE.map((chapter, index) => {
+  const chapters = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === activeLanguage);
+  const firstUnfinished = chapters.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
+  $('#path-summary').textContent = LANGUAGES[activeLanguage].name + ' · пройдено ' + lessonOrder.filter((id) => stats.completed.has(id)).length + ' из ' + lessonOrder.length;
+  const steps = chapters.map((chapter, index) => {
     const { id, title, level, ids } = chapter;
     const completed = ids.filter((id) => stats.completed.has(id));
     const next = ids.find((id) => !completed.includes(id)) || ids[0];
@@ -219,6 +248,32 @@ function renderRoute() {
     return item;
   });
   $('#path-steps').replaceChildren(...steps);
+}
+
+function renderStudyCenter() {
+  const plan = studyPlan({ stories: [...stories.values()], chapters: TIL_ROUTE, phrases: [...phrases.values()], progress, language: activeLanguage, day: localDay() });
+  renderStudyPlan($('#study-plan'), plan, {
+    elem, button, language: activeLanguage, languageName: LANGUAGES[activeLanguage].name,
+    openLesson: openStory, checkpoint: startChapterQuiz, audio: audioButton,
+    review: () => {
+      $('#review-category').value = 'all';
+      $('#review-lesson').value = '';
+      $('#review-mode').value = 'scheduled';
+      $('#review-direction').value = 'target-ru';
+      location.hash = '#review';
+      startReview();
+    },
+    dictionary: (lesson) => {
+      $('#phrase-search').value = '';
+      $('#phrase-lesson').value = lesson || '';
+      favoritesOnly = false;
+      $('#favorite-filter').setAttribute('aria-pressed', 'false');
+      showAllPhrases = false;
+      renderDictionary();
+      location.hash = '#dictionary';
+      $('#phrase-search').focus({ preventScroll: true });
+    }
+  });
 }
 
 function chapterRating(count) {
@@ -252,6 +307,8 @@ function snapshot() {
 }
 
 function swapProgress(raw) {
+  reviewReport = undefined;
+  assistant.reset();
   if (storyDialog.open) storyDialog.close();
   stopSpeech();
   progress = readProgress(raw);
@@ -278,6 +335,7 @@ function mergeProgress(raw) {
     } else progress.sessions[id] = session;
   }
   for (const phrase of other.favorites) progress.favorites.add(phrase);
+  mergeBookmarks(progress.bookmarks, other.bookmarks);
   progress.bestQuiz = Math.max(progress.bestQuiz, other.bestQuiz);
   progress.activeDays = [...new Set([...progress.activeDays, ...other.activeDays])];
   progress.challengeDays = [...new Set([...progress.challengeDays, ...other.challengeDays])];
@@ -312,14 +370,15 @@ function button(className, text, action) {
 
 function kazakh(tag, className, text) {
   const el = elem(tag, className, text);
-  el.lang = 'kk';
+  el.lang = phraseLanguage(text);
   return el;
 }
 
 function notify(message) {
-  const toast = storyDialog.open ? $('#story-notice') : $('#toast');
+  const toast = assistantDialog.open ? $('#assistant-notice') : storyDialog.open ? $('#story-notice') : $('#toast');
   clearTimeout(toastTimer);
   $('#toast').textContent = '';
+  $('#assistant-notice').textContent = '';
   $('#story-notice').textContent = '';
   toast.textContent = message;
   toastTimer = setTimeout(() => { toast.textContent = ''; }, 4600);
@@ -355,14 +414,15 @@ function audioButton(kk, slow = false) {
       return;
     }
     const synthesis = window.speechSynthesis;
-    const voice = synthesis?.getVoices().find(({ lang }) => /^kk(?:[-_]|$)/i.test(lang));
+    const language = phraseLanguage(kk);
+    const voice = synthesis?.getVoices().find(({ lang }) => lang.toLowerCase().split(/[-_]/)[0] === language);
     if (!voice) {
-      notify('Казахский голос недоступен в этом браузере. Установи голос kk-KZ в настройках устройства.');
+      notify('Голос «' + LANGUAGES[language].name + '» недоступен. Установи голос ' + LANGUAGES[language].voice + ' в настройках устройства.');
       return;
     }
     stopSpeech();
     const utterance = new SpeechSynthesisUtterance(kk);
-    utterance.lang = 'kk-KZ';
+    utterance.lang = LANGUAGES[language].voice;
     utterance.voice = voice;
     utterance.rate = slow ? 0.65 : 0.95;
     activeAudio = el;
@@ -394,21 +454,37 @@ function isStoryInProgress(story, session) {
 
 function renderStories() {
   const fragment = document.createDocumentFragment();
-  const query = $('#story-search').value.trim().toLowerCase();
+  const query = $('#story-search').value.trim();
   const filter = $('#story-progress-filter').value;
-  const meetsProgress = (story) => {
-    const session = progress.sessions[story.id];
-    if (filter === 'started') return isStoryInProgress(story, session);
-    if (filter === 'new') return !session?.endings.length && !isStoryInProgress(story, session);
-    if (filter === 'done') return Boolean(session?.endings.length);
-    if (filter === 'mastered') return session?.endings.length === story.endingCount;
-    return true;
-  };
-  const matches = lessonOrder.map((id) => stories.get(id)).filter((story) =>
-    (activeCategory === 'all' || story.category === activeCategory)
-    && (story.title + ' ' + story.word + ' ' + story.description).toLowerCase().includes(query)
-    && meetsProgress(story)
-  );
+  const level = $('#story-level').value;
+  const sort = $('#story-sort').value;
+  const course = lessonOrder.map((id) => stories.get(id));
+  const savedCount = course.filter((story) => progress.bookmarks[story.id]?.saved).length;
+  const matches = selectLessons(course, progress.sessions,
+    { language: activeLanguage, query, category: activeCategory, level, progress: filter, sort })
+    .filter((story) => !savedLessonsOnly || progress.bookmarks[story.id]?.saved);
+  $('#saved-lessons-filter').textContent = 'Закладки · ' + savedCount;
+  $('#saved-lessons-filter').setAttribute('aria-pressed', String(savedLessonsOnly));
+  const pending = resumableLessons(course, progress.sessions, activeLanguage);
+  $('#resume-lessons').hidden = !pending.length || savedLessonsOnly || Boolean(query) || activeCategory !== 'all' || filter !== 'all' || level !== 'all';
+  $('#resume-count').textContent = pending.length > 3 ? 'Показаны 3 из ' + pending.length : 'В процессе: ' + pending.length;
+  $('#resume-grid').replaceChildren(...pending.slice(0, 3).map((story) => {
+    const play = elem('button', 'resume-card');
+    play.type = 'button';
+    play.dataset.story = story.id;
+    play.dataset.resumeStory = story.id;
+    play.setAttribute('aria-label', 'Продолжить урок «' + story.title + '»');
+    play.append(elem('span', 'resume-label', story.level + ' · ' + TIL_CATEGORIES[story.category]),
+      elem('strong', '', story.title), elem('span', 'resume-caption', 'Диалог начат · вернуться к реплике'));
+    return play;
+  }));
+  $('#catalogue-course').textContent = LANGUAGES[activeLanguage].native + ' · ' + lessonOrder.length + ' уроков в курсе';
+  $('#reset-story-filters').hidden = !savedLessonsOnly && !query && activeCategory === 'all' && filter === 'all' && level === 'all' && sort === 'route';
+  $('#story-empty').hidden = matches.length !== 0;
+  $('#story-empty h3').textContent = savedLessonsOnly && !savedCount ? 'Здесь будут твои закладки' : 'Пока нет совпадений';
+  $('#story-empty p').textContent = savedLessonsOnly && !savedCount
+    ? 'Нажми на звёздочку рядом с уроком, чтобы сохранить его на потом. Закладки отдельные для каждого курса.'
+    : 'Попробуй другую фразу, уровень или тему. Можно начать со всех уроков курса.';
   const page = matches.slice(0, visibleStories);
   for (const [index, story] of page.entries()) {
     const card = $('#card-template').content.firstElementChild.cloneNode(true);
@@ -418,6 +494,7 @@ function renderStories() {
     card.style.animationDelay = Math.min(index * 35, 150) + 'ms';
     card.querySelector('.card-tag').textContent = TIL_CATEGORIES[story.category];
     card.querySelector('.card-word').textContent = story.word;
+    card.querySelector('.card-word').lang = activeLanguage;
     card.querySelector('.card-meta').textContent = story.level + ' · ' + story.minutes + ' мин';
     if (session?.endings.length) {
       const mastered = session.endings.length === story.endingCount;
@@ -425,11 +502,19 @@ function renderStories() {
     }
     card.querySelector('h3').textContent = story.title;
     card.querySelector('p').textContent = story.description;
-    const link = card.querySelector('button');
+    const link = card.querySelector('.card-action');
     const action = scene?.end ? 'Сыграть ещё' : scene && session.scene !== 'start' ? 'Продолжить' : 'Начать диалог';
     link.firstElementChild.textContent = action;
     link.dataset.story = story.id;
     link.setAttribute('aria-label', action + '. ' + story.title);
+    const actions = elem('div', 'lesson-actions');
+    link.replaceWith(actions);
+    const bookmark = button('lesson-bookmark', progress.bookmarks[story.id]?.saved ? '★' : '☆', () => changeBookmark(story.id));
+    bookmark.dataset.bookmark = story.id;
+    bookmark.setAttribute('aria-label', 'Закладка: ' + story.title);
+    bookmark.setAttribute('aria-pressed', String(Boolean(progress.bookmarks[story.id]?.saved)));
+    bookmark.title = progress.bookmarks[story.id]?.saved ? 'Убрать из закладок' : 'Сохранить урок';
+    actions.append(link, bookmark);
     fragment.append(card);
   }
   $('#story-grid').replaceChildren(fragment);
@@ -437,12 +522,37 @@ function renderStories() {
   $('#more-stories').hidden = page.length >= matches.length;
 }
 
+function updateStoryBookmark() {
+  if (!currentStory) return;
+  const saved = Boolean(progress.bookmarks[currentStory.id]?.saved);
+  $('#story-bookmark').textContent = saved ? '★ Сохранено' : '☆ В закладки';
+  $('#story-bookmark').setAttribute('aria-pressed', String(saved));
+}
+
+function changeBookmark(id) {
+  const saved = !progress.bookmarks[id]?.saved;
+  setBookmark(progress.bookmarks, id, saved);
+  save();
+  renderStories();
+  updateStoryBookmark();
+  if (!storyDialog.open) ($('[data-bookmark="' + id + '"]') || $('#saved-lessons-filter')).focus({ preventScroll: true });
+  notify(saved ? 'Урок добавлен в закладки.' : 'Урок убран из закладок.');
+}
+
+$('#saved-lessons-filter').addEventListener('click', () => {
+  savedLessonsOnly = !savedLessonsOnly;
+  visibleStories = catalogueBatch;
+  renderStories();
+});
+$('#story-bookmark').addEventListener('click', () => changeBookmark(currentStory.id));
+
 function sessionFor(story) {
   progress.sessions[story.id] ||= { scene: 'start', endings: [], updated: 0 };
   return progress.sessions[story.id];
 }
 
 function openStory(id, trigger, fromDemo = false) {
+  if (storyLanguage(stories.get(id)) !== activeLanguage) changeLanguage(storyLanguage(stories.get(id)));
   stopSpeech();
   currentStory = stories.get(id);
   lastStoryButton = trigger;
@@ -450,12 +560,13 @@ function openStory(id, trigger, fromDemo = false) {
   endingReward = 0;
   const session = sessionFor(currentStory);
   if (currentStory.scenes[session.scene].end) session.scene = 'start';
-  if (fromDemo && session.scene === 'start') {
+  if (fromDemo && currentStory.id === 'coffee' && session.scene === 'start') {
     session.scene = 'latte';
-    session.updated = Date.now();
   }
+  session.updated = Date.now();
   save();
   $('#story-title').textContent = currentStory.title;
+  updateStoryBookmark();
   $('#story-share-link').hidden = true;
   renderScene();
   if (!storyDialog.open) storyDialog.showModal();
@@ -504,6 +615,10 @@ function renderScene(focus = false, focusIndex) {
   bubbleControls.append(audioButton(data.line[0]), audioSlow);
   bubble.append(bubbleText, bubbleControls);
   panel.append(bubble);
+  const coach = button('button button-outline story-assistant', 'Спросить ИИ о реплике', () => {
+    assistant.open({ lesson: currentStory.id, phrase: data.line[0] });
+  });
+  panel.append(coach);
 
   if (data.end) {
     panel.append(elem('h3', '', data.end));
@@ -588,12 +703,12 @@ function openLessonDictionary(lesson) {
 }
 
 function renderDictionary() {
-  const query = $('#phrase-search').value.trim().toLowerCase();
+  const query = $('#phrase-search').value.trim().toLocaleLowerCase(activeLanguage);
   const lesson = $('#phrase-lesson').value;
-  const entries = [...phrases.values()].filter(({ kk, ru, lessons }) =>
+  const entries = [...phrases.values()].filter(currentPhrase).filter(({ kk, ru, lessons }) =>
     (!lesson || lessons.has(lesson)) &&
     (!favoritesOnly || progress.favorites.has(kk)) &&
-    (!query || kk.toLowerCase().includes(query) || ru.toLowerCase().includes(query))
+    (!query || kk.toLocaleLowerCase(activeLanguage).includes(query) || ru.toLocaleLowerCase(activeLanguage).includes(query))
   );
   const expanded = Boolean(lesson || query || favoritesOnly || showAllPhrases);
   const visible = expanded ? entries : entries.slice(0, 6);
@@ -654,29 +769,104 @@ function updateReviewButton(el, kk) {
   el.setAttribute('aria-pressed', String(active));
 }
 
+function selectedReview() {
+  return reviewSelection([...phrases.values()].filter(currentPhrase), progress.review,
+    { day: localDay(), category: $('#review-category').value, lesson: $('#review-lesson').value });
+}
+
 function renderReviewSummary(message = '') {
-  const count = duePhrases(progress.review, localDay()).length;
+  renderStudyCenter();
+  const selection = selectedReview();
+  const free = $('#review-mode').value === 'free';
+  const count = (free ? selection.all : selection.due).length;
   renderWeekSummary();
   const start = $('#review-start');
   start.disabled = count === 0 && !reviewSession;
   start.firstChild.textContent = reviewSession ? 'Начать заново ' : 'Начать повторение ';
   if (reviewSession) return;
-  const intro = elem('p', 'review-count', count ? 'На сегодня: ' + count : 'Пока всё спокойно');
+  $('#review-mode-note').textContent = free
+    ? 'Любые сохранённые карточки. Расписание и XP не меняются.'
+    : 'Повтори карточки, срок которых уже наступил. Оценка обновит расписание.';
+  if (reviewReport) {
+    renderReviewReport();
+    return;
+  }
+  const intro = elem('p', 'review-count', count ? (free ? 'Для тренировки: ' : 'На сегодня: ') + count : 'Нет карточек для повторения');
+  const upcoming = selection.nextDue === null ? '' : ' Следующее повторение через ' + (selection.nextDue - localDay()) + ' дн.';
   const caption = elem('p', '', message || (count
-    ? 'За один подход — до восьми карточек.'
-    : 'Фразы появятся после диалогов и тренировок. Их также можно добавить из словаря.'));
+    ? 'До восьми разных фраз. Если не вспомнишь ответ, карточка вернётся ещё один раз в конце подхода.'
+    : selection.all.length ? 'Все выбранные карточки уже повторены.' + upcoming + ' Можно выбрать свободную тренировку.'
+      : 'В этой подборке пока нет карточек. Добавь фразы из словаря или выбери другую тему и урок.'));
+  const totals = elem('p', 'review-selection-count', 'В подборке: ' + selection.all.length + ' · На сегодня: ' + selection.due.length);
   const dictionaryLink = elem('a', 'text-button review-link', 'Добавить фразы из словаря ↓');
   dictionaryLink.href = '#dictionary';
-  $('#review-content').replaceChildren(intro, caption, dictionaryLink);
+  $('#review-content').replaceChildren(intro, caption, totals, dictionaryLink);
 }
 
 function startReview() {
-  const queue = duePhrases(progress.review, localDay()).slice(0, 8);
+  const selection = selectedReview();
+  const free = $('#review-mode').value === 'free';
+  const queue = (free ? shuffle(selection.all) : selection.due).slice(0, 8);
   if (!queue.length) return;
-  reviewSession = { queue, index: 0, revealed: false, graded: 0, earned: 0 };
+  beginReviewRound(queue, { free, direction: $('#review-direction').value });
+}
+
+function beginReviewRound(queue, options) {
+  reviewReport = undefined;
+  reviewSession = createReviewRound(queue, options);
   renderReviewSummary();
   renderReviewCard();
   $('#review-content').scrollIntoView({ block: 'nearest' });
+}
+
+function renderReviewReport() {
+  const report = reviewReport;
+  const panel = elem('div', 'review-report');
+  const heading = elem('h3', '', 'Подход завершён');
+  heading.tabIndex = -1;
+  const stats = elem('dl', 'review-report-stats');
+  for (const [label, count] of [['С первого раза', report.firstTry], ['Закреплено', report.recovered], ['Ещё практики', report.pending]]) {
+    const item = elem('div');
+    item.append(elem('dt', '', label), elem('dd', '', String(count)));
+    stats.append(item);
+  }
+  panel.append(elem('p', 'review-report-label', 'ТВОЙ РЕЗУЛЬТАТ'), heading,
+    elem('p', '', 'Разных фраз: ' + report.total + (report.earned ? ' · +' + report.earned + ' XP' : '')), stats);
+  panel.append(elem('p', 'review-report-note', report.free
+    ? 'Свободная тренировка: расписание и XP не изменились.'
+    : 'Расписание обновлено по первому ответу. Повторные показы помогли закрепить фразы и не изменили интервалы.'));
+  if (report.difficult.length) {
+    const details = elem('details', 'review-difficult');
+    details.append(elem('summary', '', 'Разобрать трудные фразы · ' + report.difficult.length));
+    const list = elem('ul');
+    for (const { phrase, last } of report.difficult) {
+      const item = elem('li');
+      const line = elem('div', 'review-difficult-line');
+      line.append(kazakh('strong', '', phrase), audioButton(phrase));
+      item.append(line, elem('p', '', phrases.get(phrase).ru), elem('span', 'review-outcome', last === 'known' ? '✓ Вспомнил при повторе' : 'Ещё стоит потренировать'));
+      list.append(item);
+    }
+    details.append(list);
+    panel.append(details);
+    const retry = button('button button-primary', 'Повторить сложные · ' + report.difficult.length, () => {
+      const queue = report.difficult.map(({ phrase }) => phrase).filter((phrase) => progress.review[phrase]);
+      if (!queue.length) {
+        reviewReport = undefined;
+        renderReviewSummary();
+        return;
+      }
+      $('#review-mode').value = 'free';
+      $('#review-mode-note').textContent = 'Закрепляем трудные фразы. Расписание и XP не меняются.';
+      beginReviewRound(queue, { free: true, direction: report.direction });
+    });
+    panel.append(retry);
+  } else if (report.total) panel.append(elem('p', 'review-all-known', '✓ Все фразы вспомнились с первого раза.'));
+  panel.append(button('text-button', 'Вернуться к подборке', () => {
+    reviewReport = undefined;
+    renderReviewSummary();
+    ($('#review-start').disabled ? $('#review-mode') : $('#review-start')).focus({ preventScroll: true });
+  }));
+  $('#review-content').replaceChildren(panel);
 }
 
 function renderReviewCard() {
@@ -687,42 +877,53 @@ function renderReviewCard() {
   const kk = reviewSession.queue[reviewSession.index];
   const content = $('#review-content');
   if (!kk) {
-    const { graded: total, earned } = reviewSession;
+    reviewReport = reviewOutcome(reviewSession);
     reviewSession = undefined;
     renderRoute();
     save();
-    renderReviewSummary(total ? 'Повторено за подход: ' + total + (earned ? ' · +' + earned + ' XP' : '') + '. Расписание обновлено.' : '');
-    const first = content.firstElementChild;
+    renderReviewSummary();
+    const first = content.querySelector('h3');
     first.tabIndex = -1;
     first.focus({ preventScroll: true });
     return;
   }
   const bar = elem('div', 'review-card-head');
-  bar.append(elem('p', 'quiz-step', 'КАРТОЧКА ' + (reviewSession.index + 1) + ' ИЗ ' + reviewSession.queue.length), audioButton(kk));
-  const prompt = kazakh('p', 'review-phrase', kk);
+  const reverse = reviewSession.direction === 'ru-target';
+  const retry = Boolean(reviewSession.answers[kk]);
+  bar.append(elem('p', 'quiz-step', 'КАРТОЧКА ' + (reviewSession.index + 1) + ' ИЗ ' + reviewSession.queue.length));
+  if (!reverse || reviewSession.revealed) bar.append(audioButton(kk));
+  const prompt = reverse ? elem('p', 'review-phrase', phrases.get(kk).ru) : kazakh('p', 'review-phrase', kk);
   prompt.tabIndex = -1;
   const body = elem('div', 'review-face');
-  body.append(bar, prompt);
+  const meter = elem('progress', 'review-meter');
+  meter.max = reviewSession.queue.length;
+  meter.value = reviewSession.index;
+  meter.setAttribute('aria-label', 'Повторено карточек');
+  body.append(bar, meter, prompt);
+  if (retry) body.append(elem('p', 'review-retry-label', 'Закрепление · попробуй вспомнить ещё раз. Расписание и XP не меняются.'));
   if (!reviewSession.revealed) {
     body.append(button('button button-outline', 'Показать перевод', () => {
       reviewSession.revealed = true;
       renderReviewCard();
     }));
   } else {
-    const translation = elem('p', 'translation', phrases.get(kk).ru);
+    const translation = reverse ? kazakh('p', 'translation', kk) : elem('p', 'translation', phrases.get(kk).ru);
     translation.setAttribute('role', 'status');
     body.append(translation);
     const actions = elem('div', 'review-grades');
-    for (const [grade, label] of [['again', 'Ещё раз'], ['hard', 'Сложно'], ['known', 'Знаю']]) {
+    const grades = reviewSession.free ? [['again', 'Не вспомнил'], ['known', 'Вспомнил']]
+      : [['again', 'Ещё раз'], ['hard', 'Сложно'], ['known', 'Знаю']];
+    for (const [grade, label] of grades) {
       const gradeButton = button('button button-outline', label, () => {
+        const result = answerReview(reviewSession, grade);
+        if (!result) return;
         const day = localDay();
         const before = experience();
-        progress.review[kk] = scheduleReview(progress.review[kk], grade, day);
-        countReview(progress.game, day, kk);
+        if (!reviewSession.free && result.firstAttempt) {
+          progress.review[kk] = scheduleReview(progress.review[kk], grade, day);
+          countReview(progress.game, day, kk);
+        }
         reviewSession.earned += experience() - before;
-        reviewSession.index++;
-        reviewSession.graded++;
-        reviewSession.revealed = false;
         recordActivity('review', day);
         save();
         renderRoute();
@@ -732,6 +933,13 @@ function renderReviewCard() {
       actions.append(gradeButton);
     }
     body.append(actions);
+    if (!reviewSession.free && !retry) {
+      const intervals = grades.map(([grade, label]) => {
+        const days = scheduleReview(progress.review[kk], grade, localDay()).due - localDay();
+        return label + ' — ' + (days === 0 ? 'сегодня' : days === 1 ? 'завтра' : 'через ' + days + ' дн.');
+      });
+      body.append(elem('p', 'review-schedule-hint', intervals.join(' · ')));
+    }
   }
   content.replaceChildren(body);
   prompt.focus({ preventScroll: true });
@@ -753,7 +961,7 @@ function startQuiz() {
 }
 
 function renderMistakes() {
-  const count = pendingMistakes(progress.mistakes).length;
+  const count = pendingMistakes(progress.mistakes).filter((text) => phraseLanguage(text) === activeLanguage).length;
   $('#mistake-count').textContent = count ? 'Фраз к повторению: ' + count : 'Пока нет ошибок';
   $('#mistake-start').disabled = count === 0;
 }
@@ -766,7 +974,7 @@ function rememberMiss(phrase) {
 }
 
 function startMistakeQuiz() {
-  const pending = new Set(pendingMistakes(progress.mistakes));
+  const pending = new Set(pendingMistakes(progress.mistakes).filter((text) => phraseLanguage(text) === activeLanguage));
   if (!pending.size) return;
   launchQuiz({
     direction: 'kk-ru', category: 'all', mistakesOnly: true,
@@ -792,7 +1000,7 @@ function startLessonQuiz(lesson) {
 
 function launchQuiz({ direction, category, eligible, chapter, lesson, mistakesOnly = false }) {
   stopSpeech();
-  const questions = quizQuestions([...phrases.values()], {
+  const questions = quizQuestions([...phrases.values()].filter(currentPhrase), {
     direction, category, eligible, size: 5, allDistractors: mistakesOnly
   }, shuffle);
   quiz = { questions, direction, chapter, lesson, mistakesOnly, index: 0, score: 0, mistakes: 0 };
@@ -833,7 +1041,7 @@ function renderQuiz() {
     }
     const earned = experience() - before;
     if (earned) card.append(elem('p', 'xp-bonus', '+' + earned + ' XP'));
-    const pending = pendingMistakes(progress.mistakes).length;
+    const pending = pendingMistakes(progress.mistakes).filter((text) => phraseLanguage(text) === activeLanguage).length;
     if (pending && (quiz.mistakes || quiz.mistakesOnly)) {
       card.append(button('button button-primary', 'Повторить ошибки · ' + pending, startMistakeQuiz));
     } else if (quiz.mistakesOnly) {
@@ -871,7 +1079,7 @@ function renderQuiz() {
         card.append(note, next);
         next.focus();
       });
-      if (quiz.direction === 'ru-kk') answer.lang = 'kk';
+      if (quiz.direction === 'ru-kk') answer.lang = activeLanguage;
       card.append(answer);
     }
   }
@@ -922,7 +1130,7 @@ function openProgress() {
     ['⧉', 'Память в форме', 'Повтори карточки 20 раз', reviewedCards >= 20],
     ['ϟ', 'Без ошибок', 'Набери 5 из 5 в тесте', progress.bestQuiz === 5],
     ['Ә', 'Слово за словом', 'Собери 12 разных фраз без подсказок', progress.game.studio.length >= 12],
-    ['Қ', 'Пишу по-казахски', 'Напечатай 12 фраз без подсказок', progress.game.writing.length >= 12],
+    ['Қ', 'Пишу уверенно', 'Напечатай 12 фраз без подсказок', progress.game.writing.length >= 12],
     ['★', 'Маршрут на отлично', 'Собери три звезды в каждой главе', stats.chapterStars === TIL_ROUTE.length * 3],
     ['☀', 'Ударный день', 'Выполни все три задания дня', stats.perfectDays > 0],
     ['✳', 'Полный маршрут', 'Заверши все уроки', stats.completed.size === TIL_STORIES.length]
@@ -940,7 +1148,7 @@ function openProgress() {
   }
   badgeSection.append(badges);
   const list = elem('ul', 'progress-list');
-  for (const id of lessonOrder) {
+  for (const id of TIL_ROUTE.flatMap(({ ids }) => ids)) {
     const story = stories.get(id);
     const row = elem('li');
     const session = progress.sessions[story.id];
@@ -950,7 +1158,7 @@ function openProgress() {
       openStory(story.id, $('[data-open-progress]'));
     });
     play.setAttribute('aria-label', story.title + '. ' + label);
-    row.append(elem('span', '', story.title), play);
+    row.append(elem('span', '', LANGUAGES[storyLanguage(story)].native + ' · ' + story.title), play);
     list.append(row);
   }
   const allLessons = elem('details', 'progress-lessons');
@@ -981,7 +1189,9 @@ storyDialog.addEventListener('close', () => {
   const pathStep = lastStoryButton?.dataset.pathStep;
   const previous = lastStoryButton?.dataset.story || currentStory.id;
   const selector = pathStep === undefined ? '.card-action[data-story="' + previous + '"]' : '[data-path-step="' + pathStep + '"]';
-  const target = lastStoryButton?.isConnected ? lastStoryButton : document.querySelector(selector);
+  const resume = lastStoryButton?.dataset.resumeStory && $('[data-resume-story="' + previous + '"]');
+  const studyButton = lastStoryButton?.id === 'study-open-lesson' && $('#study-open-lesson');
+  const target = lastStoryButton?.isConnected ? lastStoryButton : studyButton || resume || document.querySelector(selector);
   target?.focus({ preventScroll: true });
 });
 for (const control of document.querySelectorAll('[data-open-progress]')) control.addEventListener('click', openProgress);
@@ -1030,11 +1240,18 @@ $('#show-more').addEventListener('click', () => {
 $('#quiz-start').addEventListener('click', startQuiz);
 $('#mistake-start').addEventListener('click', startMistakeQuiz);
 $('#review-start').addEventListener('click', startReview);
+for (const id of ['review-category', 'review-lesson', 'review-direction', 'review-mode']) $('#' + id).addEventListener('change', () => {
+  stopSpeech();
+  const interrupted = Boolean(reviewSession);
+  reviewSession = undefined;
+  reviewReport = undefined;
+  renderReviewSummary(interrupted ? 'Подборка изменена. Оценённые карточки сохранены; начни новый подход.' : '');
+});
 $('#story-search').addEventListener('input', () => {
   visibleStories = catalogueBatch;
   renderStories();
 });
-$('#story-progress-filter').addEventListener('change', () => {
+for (const id of ['story-progress-filter', 'story-level', 'story-sort']) $('#' + id).addEventListener('change', () => {
   visibleStories = catalogueBatch;
   renderStories();
 });
@@ -1045,6 +1262,22 @@ $('#more-stories').addEventListener('click', () => {
   $('#story-grid').children[firstNew]?.querySelector('button').focus();
 });
 
+function resetStoryFilters() {
+  savedLessonsOnly = false;
+  activeCategory = 'all';
+  for (const control of document.querySelectorAll('[data-filter]')) control.setAttribute('aria-pressed', String(control.dataset.filter === 'all'));
+  $('#story-search').value = '';
+  $('#story-progress-filter').value = 'all';
+  $('#story-level').value = 'all';
+  $('#story-sort').value = 'route';
+  visibleStories = catalogueBatch;
+}
+for (const id of ['reset-story-filters', 'show-course-lessons']) $('#' + id).addEventListener('click', () => {
+  resetStoryFilters();
+  renderStories();
+  $('#story-search').focus({ preventScroll: true });
+});
+
 function updateNavigation() {
   const section = location.hash || '#path';
   if (section !== '#speaking') speaking.stop();
@@ -1052,11 +1285,92 @@ function updateNavigation() {
     if (link.hash === section) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
   }
+  $('#learning-menu summary').classList.toggle('is-current', Boolean($('#learning-menu a[aria-current]')));
 }
+
+function changeLanguage(language, remember = true) {
+  if (!Object.hasOwn(LANGUAGES, language)) return;
+  stopSpeech();
+  reviewReport = undefined;
+  activeLanguage = language;
+  lessonOrder = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === language).flatMap(({ ids }) => ids);
+  const course = LANGUAGES[language];
+  $('#course-language').value = language;
+  if (remember) {
+    try { localStorage.setItem('til-mix-language', language); } catch { /* Keep this session usable. */ }
+    const url = new URL(location.href);
+    url.searchParams.set('lang', language);
+    url.searchParams.delete('lesson');
+    history.replaceState(null, '', url);
+  }
+  document.title = 'Тіл Mix — ' + course.name.toLowerCase();
+  document.querySelector('.hero-label').lastChild.textContent = ' РАЗГОВОРНЫЙ ' + course.name.toUpperCase();
+  $('#hero-title').firstChild.textContent = course.name;
+  const sample = stories.get(lessonOrder[0]);
+  const lines = [sample.scenes.start.line, sample.scenes.start.choices[0]];
+  document.querySelectorAll('.demo-message').forEach((node, index) => {
+    node.querySelector('b').textContent = lines[index][0];
+    node.querySelector('b').lang = language;
+    node.querySelector('span').textContent = lines[index][1];
+  });
+  document.querySelector('.demo-head b').textContent = sample.speaker;
+  document.querySelector('.demo-head div > span').textContent = 'История «' + sample.title + '»';
+  document.querySelector('.demo-action').dataset.story = sample.id;
+  document.querySelector('.hero-caption [lang]').textContent = course.greeting;
+  document.querySelector('.hero-caption [lang]').lang = language;
+  document.querySelector('.site-footer p').textContent = 'Три языка. Короткие диалоги. Ежедневная практика.';
+  document.querySelector('.facts li:first-child div > span').textContent = 'Диалоги ' + course.native + ' · A1–A2';
+  $('#story-total').textContent = 'Уроки · ' + lessonOrder.length;
+  $('#ending-total').textContent = 'Концовки · ' + lessonOrder.reduce((sum, id) => sum + stories.get(id).endingCount, 0);
+  for (const element of document.querySelectorAll('[data-kazakh-only]')) element.hidden = language !== 'kk';
+  if (language !== 'kk' && ['#listening', '#speaking'].includes(location.hash)) location.hash = '#path';
+  $('#quiz-direction').options[0].textContent = course.native + ' → Русский';
+  $('#quiz-direction').options[1].textContent = 'Русский → ' + course.native;
+  $('#review-direction').options[0].textContent = course.native + ' → Русский';
+  $('#review-direction').options[1].textContent = 'Русский → ' + course.native;
+  $('#review-lesson').replaceChildren(new Option('Все уроки', ''), ...lessonOrder.map((id) => new Option(stories.get(id).title, id)));
+  $('#review-category').value = 'all';
+  $('#review-mode').value = 'scheduled';
+  [...quizPlaceholder.children].forEach((node, index) => { node.textContent = { kk: ['Ә', 'Ң', 'І'], en: ['A', 'B', 'C'], tr: ['Ç', 'Ş', 'İ'] }[language][index]; });
+  $('#phrase-lesson').replaceChildren(new Option('Все уроки', ''), ...lessonOrder.map((id) => new Option(stories.get(id).title, id)));
+  resetStoryFilters();
+  $('#phrase-search').value = '';
+  $('#studio-category').value = 'all';
+  $('#quiz-category').value = 'all';
+  visibleStories = catalogueBatch;
+  showAllPhrases = false;
+  quiz = undefined;
+  reviewSession = undefined;
+  $('#quiz').replaceChildren(quizPlaceholder.cloneNode(true));
+  studio.reset();
+  assistant.reset();
+  $('#quiz-start').firstChild.textContent = 'Начать тренировку ';
+  listening.reset();
+  speaking.stop();
+  renderStories();
+  renderDictionary();
+  renderRoute();
+  renderReviewSummary();
+}
+
+$('#course-language').addEventListener('change', (event) => changeLanguage(event.target.value));
+const learningMenu = $('#learning-menu');
+learningMenu.addEventListener('click', (event) => {
+  if (event.target.closest('a')) learningMenu.open = false;
+});
+document.addEventListener('click', (event) => {
+  if (!learningMenu.contains(event.target)) learningMenu.open = false;
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && learningMenu.open) {
+    learningMenu.open = false;
+    learningMenu.querySelector('summary').focus();
+  }
+});
 
 const reactToPractice = setupCompanion();
 const renderDailyPhrase = setupDailyPhrase({
-  phrases: [...phrases.values()], audioButton,
+  phrases: [...phrases.values()], audioButton, eligible: currentPhrase, getLanguage: () => activeLanguage,
   hasCard: (phrase) => Object.hasOwn(progress.review, phrase),
   addCard(phrase) {
     addToReview(phrase);
@@ -1064,7 +1378,7 @@ const renderDailyPhrase = setupDailyPhrase({
   }
 });
 const studio = setupStudio({
-  elem, button, kazakh, audioButton, stopSpeech, shuffle,
+  elem, button, kazakh, audioButton, stopSpeech, shuffle, getLanguage: () => activeLanguage,
   readSolved: (mode) => mode === 'typing' ? progress.game.writing : progress.game.studio,
   onMiss(phrase) {
     rememberMiss(phrase);
@@ -1101,6 +1415,17 @@ const speaking = setupSpeaking({
     save();
   }
 });
+const assistant = setupAssistant({
+  stories: TIL_STORIES, elem, button, kazakh, audioButton, stopSpeech, getLanguage: () => activeLanguage,
+  savePhrase(phrase) {
+    addToReview(phrase);
+    save();
+  },
+  openLesson(id) {
+    if (storyDialog.open && currentStory.id === id) return;
+    openStory(id, storyDialog.open ? lastStoryButton : $('#open-assistant'));
+  }
+});
 const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange: renderWeekSummary });
 for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]) {
   const filter = elem('button', '', label);
@@ -1112,6 +1437,7 @@ for (const [id, label] of [['all', 'Все'], ...Object.entries(TIL_CATEGORIES)]
   const option = elem('option', '', label);
   option.value = id;
   $('#quiz-category').append(option);
+  $('#review-category').append(option.cloneNode(true));
 }
 $('#story-total').textContent = 'Уроки A1–A2 · ' + TIL_STORIES.length;
 $('#ending-total').textContent = 'Концовки · ' + totalEndings;
@@ -1121,6 +1447,7 @@ for (const id of lessonOrder) {
   $('#phrase-lesson').append(option);
 }
 window.addEventListener('hashchange', updateNavigation);
+changeLanguage(activeLanguage, false);
 updateNavigation();
 renderStories();
 renderDictionary();

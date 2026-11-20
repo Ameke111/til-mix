@@ -100,6 +100,7 @@ export function setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress,
     const displayAuth = hasServer && !current && !guestSettings;
     const registering = authMode === 'register';
     $('#profile-trigger-text').textContent = hasServer && !current ? 'Войти' : 'Профиль';
+    $('#open-account').setAttribute('aria-label', hasServer && !current ? 'Войти в аккаунт' : 'Мой профиль');
     $('#profile-mode').textContent = current ? '@' + current.login : displayAuth ? 'ЛИЧНЫЙ КАБИНЕТ' : 'ГОСТЕВОЙ РЕЖИМ';
     $('#account-title').textContent = displayAuth ? registering ? 'Создать аккаунт' : 'Снова в Тіл Mix' : 'Мой профиль';
     $('#auth-tabs').hidden = !displayAuth;
