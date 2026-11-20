@@ -10,6 +10,12 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   const input = document.querySelector('#assistant-input');
   const clear = document.querySelector('#assistant-clear');
   const notice = document.querySelector('#assistant-notice');
+  const mode = document.querySelector('#assistant-mode');
+  const connection = document.querySelector('#assistant-connection');
+  const privacy = document.querySelector('#assistant-privacy');
+  const stop = document.querySelector('#assistant-stop');
+  let history = [];
+  let pending;
   let helper;
   let context = {};
   let more;
@@ -26,6 +32,8 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   }
 
   function renderWelcome() {
+    cancelModel();
+    history = [];
     conversation = { ...context };
     practice = undefined;
     more = undefined;
@@ -35,7 +43,9 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     const intro = elem('div', 'assistant-reply');
     intro.append(elem('p', '', context.lesson
       ? `Ты в уроке «${titles.get(context.lesson)}». Разберём реплику?`
-      : 'Сәлем! Спроси по-русски или по-казахски. Подберу примеры из наших диалогов.'));
+      : mode.value === 'model'
+        ? 'Сәлем! Давай поговорим по-казахски. Можешь прислать свою фразу для разбора или задать вопрос о языке.'
+        : 'Сәлем! Спроси по-русски или по-казахски. Подберу примеры из наших диалогов.'));
     const choices = elem('div', 'assistant-prompts');
     if (context.phrase) choices.append(button('assistant-chip', 'Переведи реплику', () => ask('Переведи реплику')));
     for (const question of starterQuestions) choices.append(button('assistant-chip', question, () => ask(question)));
@@ -88,6 +98,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   }
 
   function startPractice(example) {
+    if (pending) return;
     stopSpeech();
     practice = example;
     conversation = { lesson: example.lesson, phrase: example.kk };
@@ -126,7 +137,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     for (const letter of 'әғқңөұүһі') letters.append(button('assistant-chip', letter, () => {
       const start = input.selectionStart ?? input.value.length;
       const end = input.selectionEnd ?? start;
-      if (input.value.length - (end - start) >= questionLimit) return;
+      if (input.value.length - (end - start) >= input.maxLength) return;
       input.setRangeText(letter, start, end, 'end');
       input.focus({ preventScroll: true });
     }));
@@ -156,12 +167,17 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   }
 
   function ask(raw) {
+    if (pending) return;
     const question = raw.trim();
     if (!question) return;
     input.value = '';
     notice.textContent = '';
     if (practice) {
       submitPractice(question);
+      return;
+    }
+    if (mode.value === 'model') {
+      void askModel(question);
       return;
     }
     moreButton?.remove();
@@ -177,6 +193,81 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     appendTurn(question, reply);
     more = result.more;
     if (document.activeElement !== input && !dialog.contains(document.activeElement)) log.focus({ preventScroll: true });
+  }
+
+  function cancelModel() {
+    pending?.abort();
+    pending = undefined;
+    stop.hidden = true;
+    form.querySelector('[type="submit"]').disabled = false;
+    log.removeAttribute('aria-busy');
+  }
+
+  function displayModelText(element, content) {
+    const parts = content.split(/\*\*([^*]+)\*\*/g);
+    element.replaceChildren(...parts.map((part, index) => elem(index % 2 ? 'strong' : 'span', '', part)));
+  }
+
+  async function askModel(question) {
+    const controller = new AbortController();
+    pending = controller;
+    const reply = elem('div', 'assistant-reply assistant-generated');
+    const text = elem('p', 'assistant-thinking', 'Обдумываю вопрос…');
+    reply.append(text);
+    appendTurn(question, reply);
+    stop.hidden = false;
+    form.querySelector('[type="submit"]').disabled = true;
+    log.setAttribute('aria-busy', 'true');
+    const messages = [...history, { role: 'user', content: question }];
+    const timer = setTimeout(() => controller.abort(), 125000);
+    try {
+      const response = await fetch('/api/assistant', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+        body: JSON.stringify({ messages, lesson: conversation.lesson, phrase: conversation.phrase })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Нейросеть сейчас недоступна.');
+      if (typeof data.text !== 'string' || !data.text.trim()) throw new Error('Получен пустой ответ.');
+      if (pending !== controller) return;
+      displayModelText(text, data.text);
+      history = [...messages, { role: 'assistant', content: data.text }];
+      while (history.length > 8 || history.reduce((sum, entry) => sum + entry.content.length, 0) > 7000) history.splice(0, 2);
+      if (data.truncated) reply.append(elem('p', 'assistant-connection', 'Ответ достиг ограничения длины. Попроси продолжить.'));
+    } catch (error) {
+      text.textContent = controller.signal.aborted ? 'Ответ остановлен.' : error.message;
+      reply.append(button('assistant-chip', 'Повторить вопрос', () => ask(question)));
+    } finally {
+      text.classList.remove('assistant-thinking');
+      clearTimeout(timer);
+      if (pending === controller) cancelModel();
+    }
+  }
+
+  function updateMode() {
+    input.maxLength = mode.value === 'model' ? 2000 : questionLimit;
+    privacy.textContent = mode.value === 'model'
+      ? 'Переписка отправляется серверу модели. Нейросеть может ошибаться.'
+      : 'Ответы из уроков Тіл Mix. Вопросы остаются в браузере.';
+    renderWelcome();
+  }
+
+  mode.addEventListener('change', updateMode);
+  stop.addEventListener('click', cancelModel);
+  if (document.querySelector('meta[name="til-server"]')) {
+    connection.textContent = 'Проверяю подключение нейросети…';
+    fetch('/api/assistant').then((response) => {
+      if (!response.ok) throw new Error();
+      return response.json();
+    }).then((settings) => {
+      mode.querySelector('[value="model"]').disabled = !settings.available;
+      connection.textContent = settings.available
+        ? 'Нейросеть подключена.' + (settings.loginRequired ? ' Для разговора войди в профиль.' : '')
+        : 'Для нейросети нужно настроить подключение на сервере.';
+      if (settings.available && !log.childElementCount) {
+        mode.value = 'model';
+        updateMode();
+      }
+    }).catch(() => { connection.textContent = 'Подключение нейросети сейчас недоступно.'; });
   }
 
   function open(next = {}) {
@@ -200,6 +291,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     title.focus({ preventScroll: true });
   });
   dialog.addEventListener('close', () => {
+    cancelModel();
     notice.textContent = '';
     stopSpeech();
   });

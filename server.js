@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { defaultDatabase, openDatabase } from './database.js';
 import { demoLogin, seedDemo } from './demo-data.js';
+import { ModelError, modelMessages, modelSettings, requestModel } from './assistant-model.js';
 
 const keyFor = promisify(scrypt);
 const hashOptions = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
@@ -141,11 +142,13 @@ function createThrottle() {
   };
 }
 
-export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origin = 'http://127.0.0.1:4173', demo = false } = {}) {
+export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origin = 'http://127.0.0.1:4173', demo = false, ai = modelSettings() } = {}) {
   if (demo && (dbPath !== ':memory:' || new URL(origin).hostname !== '127.0.0.1')) {
     throw new Error('Демо запускается только на 127.0.0.1 с базой в памяти.');
   }
   const publicOrigin = new URL(origin).origin;
+  const localAI = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(origin).hostname);
+  let modelBusy = false;
   const secure = publicOrigin.startsWith('https:');
   const cookieName = demo ? 'til_demo_session' : 'til_session';
   const db = openDatabase(dbPath);
@@ -236,6 +239,28 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
     const account = digest ? findSession.get(digest, Date.now()) : undefined;
     const method = req.method;
     if (method === 'GET' && path === '/api/health') return reply(res, 200, { ok: true });
+    if (method === 'GET' && path === '/api/assistant') return reply(res, 200, { available: Boolean(ai), loginRequired: !localAI });
+    if (method === 'POST' && path === '/api/assistant') {
+      if (!ai) throw new RequestError(503, 'ai_unavailable', 'Нейросеть ещё не подключена к серверу сайта.');
+      if (!localAI && !account) throw loginRequired();
+      throttle('ai:' + (account?.id ?? ip), 20, 600000);
+      const messages = modelMessages(await jsonBody(req));
+      if (modelBusy) throw new RequestError(429, 'ai_busy', 'Нейросеть отвечает на другой вопрос. Попробуй чуть позже.');
+      modelBusy = true;
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      const timer = setTimeout(cancel, 120000);
+      res.once('close', cancel);
+      try {
+        const result = await requestModel(ai, messages, controller.signal);
+        if (!res.destroyed) reply(res, 200, result);
+      } finally {
+        clearTimeout(timer);
+        res.removeListener('close', cancel);
+        modelBusy = false;
+      }
+      return;
+    }
     if (method === 'GET' && path === '/api/account') return reply(res, 200, account ? expose(account) : { user: null });
     if (path === '/api/demo/admin' && method === 'POST') {
       if (!demo || req.socket.remoteAddress !== '127.0.0.1') {
@@ -358,7 +383,7 @@ export function createTilServer({ dbPath = ':memory:', staticDir = 'dist', origi
       res.writeHead(200, headers);
       res.end(req.method === 'HEAD' ? undefined : file);
     } catch (error) {
-      if (error instanceof RequestError) reply(res, error.status, { code: error.code, message: error.message });
+      if (error instanceof RequestError || error instanceof ModelError) reply(res, error.status, { code: error.code ?? 'ai_error', message: error.message });
       else if (error.code === 'ENOENT') reply(res, 404, { code: 'not_found', message: 'Сначала собери приложение командой npm run build.' });
       else reply(res, 500, { code: 'internal', message: 'Временная ошибка сервера.' });
     }

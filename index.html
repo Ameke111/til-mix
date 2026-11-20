@@ -272,13 +272,19 @@
     </div>
     <div class="assistant-log" id="assistant-log" role="log" aria-label="Переписка с помощником" tabindex="0"></div>
     <div class="assistant-compose">
+      <div class="assistant-mode-row">
+        <label for="assistant-mode">Режим</label>
+        <select id="assistant-mode"><option value="lessons">Фразы из уроков</option><option value="model" disabled>Нейросеть</option></select>
+        <button type="button" class="text-button" id="assistant-stop" hidden>Остановить</button>
+      </div>
+      <p id="assistant-connection" class="assistant-connection" role="status">Нейросеть доступна в серверной версии сайта.</p>
       <form class="assistant-form" id="assistant-form">
         <label for="assistant-input" class="sr-only">Вопрос по казахскому</label>
         <input id="assistant-input" class="search" name="question" autocomplete="off" enterkeyhint="send" placeholder="Напиши вопрос…" required>
         <button type="submit" class="button button-primary">Спросить</button>
       </form>
       <div class="assistant-meta">
-        <p>Ответы из уроков Тіл Mix. Вопросы остаются в браузере.</p>
+        <p id="assistant-privacy">Ответы из уроков Тіл Mix. Вопросы остаются в браузере.</p>
         <button type="button" class="text-button" id="assistant-clear" disabled>Очистить чат</button>
       </div>
       <p class="assistant-notice" id="assistant-notice" role="status"></p>

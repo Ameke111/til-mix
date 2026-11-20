@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node build.js --dev",
     "start": "node server.js",
+    "ai": "node ai-local.js",
     "predemo": "npm run build",
     "demo": "node demo.js",
     "admin": "node admin.js",
