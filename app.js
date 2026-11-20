@@ -12,10 +12,12 @@ import { activityCalendar, renderWeek } from './activity-ui.js';
 import { setupCompanion, setupDailyPhrase } from './companion-ui.js';
 import { setupListening } from './listening-ui.js';
 import { setupSpeaking } from './speaking-ui.js';
+import { setupAssistant } from './assistant-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
 const progressDialog = $('#progress-dialog');
+const assistantDialog = $('#assistant-dialog');
 const sceneArea = $('#scene');
 const storageKey = 'til-mix-progress-v1';
 const stories = new Map(TIL_STORIES.map((story) => [story.id, {
@@ -252,6 +254,7 @@ function snapshot() {
 }
 
 function swapProgress(raw) {
+  assistant.reset();
   if (storyDialog.open) storyDialog.close();
   stopSpeech();
   progress = readProgress(raw);
@@ -317,9 +320,10 @@ function kazakh(tag, className, text) {
 }
 
 function notify(message) {
-  const toast = storyDialog.open ? $('#story-notice') : $('#toast');
+  const toast = assistantDialog.open ? $('#assistant-notice') : storyDialog.open ? $('#story-notice') : $('#toast');
   clearTimeout(toastTimer);
   $('#toast').textContent = '';
+  $('#assistant-notice').textContent = '';
   $('#story-notice').textContent = '';
   toast.textContent = message;
   toastTimer = setTimeout(() => { toast.textContent = ''; }, 4600);
@@ -504,6 +508,10 @@ function renderScene(focus = false, focusIndex) {
   bubbleControls.append(audioButton(data.line[0]), audioSlow);
   bubble.append(bubbleText, bubbleControls);
   panel.append(bubble);
+  const coach = button('button button-outline story-assistant', 'Спросить ИИ о реплике', () => {
+    assistant.open({ lesson: currentStory.id, phrase: data.line[0] });
+  });
+  panel.append(coach);
 
   if (data.end) {
     panel.append(elem('h3', '', data.end));
@@ -1099,6 +1107,13 @@ const speaking = setupSpeaking({
     recordActivity('speaking');
     renderRoute();
     save();
+  }
+});
+const assistant = setupAssistant({
+  stories: TIL_STORIES, elem, button, kazakh, audioButton, stopSpeech,
+  openLesson(id) {
+    if (storyDialog.open && currentStory.id === id) return;
+    openStory(id, storyDialog.open ? lastStoryButton : $('#open-assistant'));
   }
 });
 const account = setupAccount({ snapshot, loadGuest, swapProgress, mergeProgress, notify, onGoalChange: renderWeekSummary });

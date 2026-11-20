@@ -1,0 +1,109 @@
+.assistant-banner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  margin: 20px 0;
+  padding: 17px 21px;
+  background: #f1edfb;
+  border: 1px solid #ded6ef;
+  border-radius: 18px;
+}
+.assistant-emblem {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #dcd1f5;
+  color: #382960;
+  font-size: 1.35rem;
+}
+.assistant-banner h2 { font-size: clamp(1.15rem, 2vw, 1.4rem); letter-spacing: -.035em; }
+.assistant-banner p { color: var(--muted); font-size: .9rem; }
+.assistant-dialog {
+  width: min(640px, calc(100% - 24px));
+  height: min(680px, calc(100dvh - 28px));
+  overflow: hidden;
+}
+.assistant-dialog[open] { display: flex; flex-direction: column; }
+.assistant-dialog .dialog-head { justify-content: start; padding: 12px 18px; background: #f4effc; }
+.assistant-dialog .dialog-close { margin-inline-start: auto; min-width: 44px; min-height: 44px; }
+.assistant-log {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 18px;
+  background: #f8f7f1;
+}
+.assistant-log:focus-visible { outline: 2px solid #7771b1; outline-offset: -3px; }
+.assistant-turn { display: grid; gap: 9px; margin-top: 12px; }
+.assistant-question, .assistant-reply {
+  width: fit-content;
+  max-width: 92%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+  line-height: 1.48;
+}
+.assistant-question { justify-self: end; border-bottom-right-radius: 4px; background: #e2efcd; }
+.assistant-reply { border: 1px solid #dfded2; border-bottom-left-radius: 4px; background: var(--white); }
+.assistant-turn .assistant-reply { animation: enter .22s both; }
+.assistant-prompts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.assistant-chip, .assistant-source {
+  display: inline-flex;
+  align-items: center;
+  text-align: start;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #dbd4ea;
+  border-radius: 9px;
+  background: #f1edfb;
+  color: #382960;
+  font-size: .86rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.assistant-chip:hover, .assistant-source:hover { background: #e6dcf8; }
+.assistant-reply > :is(.assistant-source, .assistant-chip) { margin-top: 9px; }
+.assistant-example {
+  margin-top: 9px;
+  border-left: 3px solid #a78dcd;
+  border-radius: 5px 10px 10px 5px;
+  background: #f1eef7;
+  padding: 7px 10px;
+}
+.assistant-example-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.assistant-example-head .audio-button { flex-shrink: 0; min-width: 44px; min-height: 44px; }
+.assistant-example p { color: var(--muted); }
+.assistant-example .assistant-source { margin-top: 5px; background: transparent; }
+.assistant-compose { padding: 10px 18px; border-top: 1px solid var(--line); }
+.assistant-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 8px; }
+.assistant-form input { min-width: 0; width: 100%; font-size: 1rem; }
+.assistant-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.assistant-meta p { color: var(--muted); font-size: .76rem; }
+.assistant-meta button { min-height: 44px; flex-shrink: 0; }
+.assistant-meta button:disabled { opacity: .6; cursor: default; }
+.assistant-notice:not(:empty) { font-size: .84rem; padding-bottom: 5px; }
+.story-assistant { justify-self: start; margin-bottom: 3px; }
+@media (min-width: 1001px) {
+  .nav { gap: clamp(10px, 1.8vw, 25px); }
+}
+@media (max-width: 540px) {
+  .assistant-banner { grid-template-columns: auto 1fr; padding: 14px; }
+  .assistant-banner .button { grid-column: 1/-1; justify-self: start; }
+  .assistant-dialog .dialog-head, .assistant-log, .assistant-compose { padding-inline: 12px; }
+  .assistant-question, .assistant-reply { max-width: 97%; }
+  .assistant-form button { padding-inline: 11px; }
+}
+@media (max-height: 460px) {
+  .assistant-dialog .dialog-head, .assistant-compose { padding-block: 4px; }
+  .assistant-emblem { height: 36px; width: 36px; flex-basis: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-turn .assistant-reply { animation: none; }
+}

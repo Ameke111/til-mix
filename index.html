@@ -23,6 +23,7 @@
         <a href="#speaking">Говори</a>
         <a href="#dictionary">Словарь</a>
         <a href="#practice">Тренировка</a>
+        <a href="#assistant">Помощник</a>
       </nav>
       <div class="header-actions">
         <button class="button button-outline progress-toggle" type="button" data-open-progress aria-label="Мой прогресс"><span class="progress-icon" aria-hidden="true">◈</span><span class="progress-label">Мой прогресс</span><span class="xp-chip" id="nav-xp" aria-hidden="true">0 XP</span></button>
@@ -65,6 +66,15 @@
       <li><span class="fact-icon" aria-hidden="true">ϟ</span><div><b id="streak-text">Серия: 0 дней</b><span>Диалог, тест или повторение</span></div></li>
       <li><span class="fact-icon" aria-hidden="true">◈</span><div><b id="ending-total">Концовки</b><span>Реплики меняют сюжет</span></div></li>
     </ul>
+
+    <section class="assistant-banner" id="assistant" aria-labelledby="assistant-banner-title">
+      <span class="assistant-emblem" aria-hidden="true">✦</span>
+      <div>
+        <h2 id="assistant-banner-title">ИИ-помощник Тіл Mix</h2>
+        <p>Спроси, как сказать фразу, что значит слово или какой урок выбрать.</p>
+      </div>
+      <button type="button" class="button button-primary" id="open-assistant">Задать вопрос <span aria-hidden="true">↗</span></button>
+    </section>
 
     <section class="learning-path" id="path" aria-labelledby="path-title">
       <div class="section-head">
@@ -253,6 +263,27 @@
     </span>
   </button>
   <span id="companion-status" class="sr-only" role="status"></span>
+
+  <dialog class="dialog assistant-dialog" id="assistant-dialog" aria-labelledby="assistant-title">
+    <div class="dialog-head">
+      <span class="assistant-emblem" aria-hidden="true">✦</span>
+      <h2 id="assistant-title" tabindex="-1" autofocus>ИИ-помощник</h2>
+      <button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть помощника">×</button>
+    </div>
+    <div class="assistant-log" id="assistant-log" role="log" aria-label="Переписка с помощником" tabindex="0"></div>
+    <div class="assistant-compose">
+      <form class="assistant-form" id="assistant-form">
+        <label for="assistant-input" class="sr-only">Вопрос по казахскому</label>
+        <input id="assistant-input" class="search" name="question" autocomplete="off" enterkeyhint="send" placeholder="Напиши вопрос…" required>
+        <button type="submit" class="button button-primary">Спросить</button>
+      </form>
+      <div class="assistant-meta">
+        <p>Ответы из уроков Тіл Mix. Вопросы остаются в браузере.</p>
+        <button type="button" class="text-button" id="assistant-clear" disabled>Очистить чат</button>
+      </div>
+      <p class="assistant-notice" id="assistant-notice" role="status"></p>
+    </div>
+  </dialog>
 
   <dialog class="dialog story-dialog" id="story-dialog" aria-labelledby="story-title">
     <div class="dialog-head"><div><span class="dialog-stage" id="story-stage"></span><h2 id="story-title"></h2></div><button type="button" class="icon-button dialog-close" data-close aria-label="Закрыть историю">×</button></div>
