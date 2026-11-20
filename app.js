@@ -15,6 +15,7 @@ import { setupSpeaking } from './speaking-ui.js';
 import { setupAssistant } from './assistant-ui.js';
 import { LANGUAGES, storyLanguage } from './languages.js';
 import { selectLessons } from './catalogue.js';
+import { readBookmarks, setBookmark, mergeBookmarks, resumableLessons } from './lesson-library.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -75,6 +76,7 @@ function readProgress(raw) {
     }
     return {
       sessions,
+      bookmarks: readBookmarks(saved.bookmarks, stories),
       favorites: new Set(Array.isArray(saved.favorites) ? saved.favorites.filter((kk) => phrases.has(kk)) : []),
       bestQuiz: Number.isInteger(saved.bestQuiz) && saved.bestQuiz >= 0 && saved.bestQuiz <= 5 ? saved.bestQuiz : 0,
       translated: saved.translated !== false,
@@ -103,6 +105,7 @@ let activeCategory = 'all';
 const catalogueBatch = 6;
 let visibleStories = catalogueBatch;
 let favoritesOnly = false;
+let savedLessonsOnly = false;
 let showAllPhrases = false;
 let quiz;
 let reviewSession;
@@ -299,6 +302,7 @@ function mergeProgress(raw) {
     } else progress.sessions[id] = session;
   }
   for (const phrase of other.favorites) progress.favorites.add(phrase);
+  mergeBookmarks(progress.bookmarks, other.bookmarks);
   progress.bestQuiz = Math.max(progress.bestQuiz, other.bestQuiz);
   progress.activeDays = [...new Set([...progress.activeDays, ...other.activeDays])];
   progress.challengeDays = [...new Set([...progress.challengeDays, ...other.challengeDays])];
@@ -421,11 +425,33 @@ function renderStories() {
   const filter = $('#story-progress-filter').value;
   const level = $('#story-level').value;
   const sort = $('#story-sort').value;
-  const matches = selectLessons(lessonOrder.map((id) => stories.get(id)), progress.sessions,
-    { language: activeLanguage, query, category: activeCategory, level, progress: filter, sort });
+  const course = lessonOrder.map((id) => stories.get(id));
+  const savedCount = course.filter((story) => progress.bookmarks[story.id]?.saved).length;
+  const matches = selectLessons(course, progress.sessions,
+    { language: activeLanguage, query, category: activeCategory, level, progress: filter, sort })
+    .filter((story) => !savedLessonsOnly || progress.bookmarks[story.id]?.saved);
+  $('#saved-lessons-filter').textContent = 'Закладки · ' + savedCount;
+  $('#saved-lessons-filter').setAttribute('aria-pressed', String(savedLessonsOnly));
+  const pending = resumableLessons(course, progress.sessions, activeLanguage);
+  $('#resume-lessons').hidden = !pending.length || savedLessonsOnly || Boolean(query) || activeCategory !== 'all' || filter !== 'all' || level !== 'all';
+  $('#resume-count').textContent = pending.length > 3 ? 'Показаны 3 из ' + pending.length : 'В процессе: ' + pending.length;
+  $('#resume-grid').replaceChildren(...pending.slice(0, 3).map((story) => {
+    const play = elem('button', 'resume-card');
+    play.type = 'button';
+    play.dataset.story = story.id;
+    play.dataset.resumeStory = story.id;
+    play.setAttribute('aria-label', 'Продолжить урок «' + story.title + '»');
+    play.append(elem('span', 'resume-label', story.level + ' · ' + TIL_CATEGORIES[story.category]),
+      elem('strong', '', story.title), elem('span', 'resume-caption', 'Диалог начат · вернуться к реплике'));
+    return play;
+  }));
   $('#catalogue-course').textContent = LANGUAGES[activeLanguage].native + ' · ' + lessonOrder.length + ' уроков в курсе';
-  $('#reset-story-filters').hidden = !query && activeCategory === 'all' && filter === 'all' && level === 'all' && sort === 'route';
+  $('#reset-story-filters').hidden = !savedLessonsOnly && !query && activeCategory === 'all' && filter === 'all' && level === 'all' && sort === 'route';
   $('#story-empty').hidden = matches.length !== 0;
+  $('#story-empty h3').textContent = savedLessonsOnly && !savedCount ? 'Здесь будут твои закладки' : 'Пока нет совпадений';
+  $('#story-empty p').textContent = savedLessonsOnly && !savedCount
+    ? 'Нажми на звёздочку рядом с уроком, чтобы сохранить его на потом. Закладки отдельные для каждого курса.'
+    : 'Попробуй другую фразу, уровень или тему. Можно начать со всех уроков курса.';
   const page = matches.slice(0, visibleStories);
   for (const [index, story] of page.entries()) {
     const card = $('#card-template').content.firstElementChild.cloneNode(true);
@@ -443,17 +469,49 @@ function renderStories() {
     }
     card.querySelector('h3').textContent = story.title;
     card.querySelector('p').textContent = story.description;
-    const link = card.querySelector('button');
+    const link = card.querySelector('.card-action');
     const action = scene?.end ? 'Сыграть ещё' : scene && session.scene !== 'start' ? 'Продолжить' : 'Начать диалог';
     link.firstElementChild.textContent = action;
     link.dataset.story = story.id;
     link.setAttribute('aria-label', action + '. ' + story.title);
+    const actions = elem('div', 'lesson-actions');
+    link.replaceWith(actions);
+    const bookmark = button('lesson-bookmark', progress.bookmarks[story.id]?.saved ? '★' : '☆', () => changeBookmark(story.id));
+    bookmark.dataset.bookmark = story.id;
+    bookmark.setAttribute('aria-label', 'Закладка: ' + story.title);
+    bookmark.setAttribute('aria-pressed', String(Boolean(progress.bookmarks[story.id]?.saved)));
+    bookmark.title = progress.bookmarks[story.id]?.saved ? 'Убрать из закладок' : 'Сохранить урок';
+    actions.append(link, bookmark);
     fragment.append(card);
   }
   $('#story-grid').replaceChildren(fragment);
   $('#story-results').textContent = matches.length ? 'Показано уроков: ' + page.length + ' из ' + matches.length : 'По этому запросу уроков нет.';
   $('#more-stories').hidden = page.length >= matches.length;
 }
+
+function updateStoryBookmark() {
+  if (!currentStory) return;
+  const saved = Boolean(progress.bookmarks[currentStory.id]?.saved);
+  $('#story-bookmark').textContent = saved ? '★ Сохранено' : '☆ В закладки';
+  $('#story-bookmark').setAttribute('aria-pressed', String(saved));
+}
+
+function changeBookmark(id) {
+  const saved = !progress.bookmarks[id]?.saved;
+  setBookmark(progress.bookmarks, id, saved);
+  save();
+  renderStories();
+  updateStoryBookmark();
+  if (!storyDialog.open) ($('[data-bookmark="' + id + '"]') || $('#saved-lessons-filter')).focus({ preventScroll: true });
+  notify(saved ? 'Урок добавлен в закладки.' : 'Урок убран из закладок.');
+}
+
+$('#saved-lessons-filter').addEventListener('click', () => {
+  savedLessonsOnly = !savedLessonsOnly;
+  visibleStories = catalogueBatch;
+  renderStories();
+});
+$('#story-bookmark').addEventListener('click', () => changeBookmark(currentStory.id));
 
 function sessionFor(story) {
   progress.sessions[story.id] ||= { scene: 'start', endings: [], updated: 0 };
@@ -475,6 +533,7 @@ function openStory(id, trigger, fromDemo = false) {
   session.updated = Date.now();
   save();
   $('#story-title').textContent = currentStory.title;
+  updateStoryBookmark();
   $('#story-share-link').hidden = true;
   renderScene();
   if (!storyDialog.open) storyDialog.showModal();
@@ -1004,7 +1063,8 @@ storyDialog.addEventListener('close', () => {
   const pathStep = lastStoryButton?.dataset.pathStep;
   const previous = lastStoryButton?.dataset.story || currentStory.id;
   const selector = pathStep === undefined ? '.card-action[data-story="' + previous + '"]' : '[data-path-step="' + pathStep + '"]';
-  const target = lastStoryButton?.isConnected ? lastStoryButton : document.querySelector(selector);
+  const resume = lastStoryButton?.dataset.resumeStory && $('[data-resume-story="' + previous + '"]');
+  const target = lastStoryButton?.isConnected ? lastStoryButton : resume || document.querySelector(selector);
   target?.focus({ preventScroll: true });
 });
 for (const control of document.querySelectorAll('[data-open-progress]')) control.addEventListener('click', openProgress);
@@ -1069,6 +1129,7 @@ $('#more-stories').addEventListener('click', () => {
 });
 
 function resetStoryFilters() {
+  savedLessonsOnly = false;
   activeCategory = 'all';
   for (const control of document.querySelectorAll('[data-filter]')) control.setAttribute('aria-pressed', String(control.dataset.filter === 'all'));
   $('#story-search').value = '';

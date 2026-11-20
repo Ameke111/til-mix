@@ -121,6 +121,10 @@
       <div class="section-head">
         <div><p class="eyebrow"><span aria-hidden="true">✳</span> ИНТЕРАКТИВНЫЕ ДИАЛОГИ</p><h2 id="stories-title">Выбери ситуацию<span>.</span></h2></div>
       </div>
+      <section class="resume-lessons" id="resume-lessons" aria-labelledby="resume-title" hidden>
+        <div class="resume-heading"><div><p class="eyebrow">ТВОИ ДИАЛОГИ</p><h3 id="resume-title">Продолжить обучение</h3></div><p id="resume-count"></p></div>
+        <div id="resume-grid" class="resume-grid"></div>
+      </section>
       <div class="catalogue-tools">
         <div class="filters" id="story-filters" role="group" aria-label="Темы историй"></div>
         <div class="catalogue-fields">
@@ -134,7 +138,7 @@
           <select id="story-sort"><option value="route">По маршруту</option><option value="recent">Недавно открытые</option><option value="new">Сначала новые</option><option value="title">По названию</option></select>
         </div>
       </div>
-      <div class="catalogue-selection"><p id="catalogue-course"></p><button class="text-button" type="button" id="reset-story-filters" hidden>Сбросить фильтры</button></div>
+      <div class="catalogue-selection"><p id="catalogue-course"></p><div class="catalogue-selection-actions"><button class="button bookmark-filter" type="button" id="saved-lessons-filter" aria-pressed="false">Закладки · 0</button><button class="text-button" type="button" id="reset-story-filters" hidden>Сбросить фильтры</button></div></div>
       <div id="story-grid" class="story-grid"></div>
       <div class="catalogue-empty" id="story-empty" hidden><span aria-hidden="true">⌕</span><h3>Пока нет совпадений</h3><p>Попробуй другую фразу, уровень или тему. Можно начать со всех уроков курса.</p><button class="button button-primary" id="show-course-lessons" type="button">Показать все уроки</button></div>
       <div class="catalogue-foot"><p id="story-results" role="status"></p><button type="button" class="button button-outline" id="more-stories">Показать ещё ↓</button></div>
@@ -306,7 +310,7 @@
     <div class="scene" id="scene"></div>
     <p class="story-notice" id="story-notice" role="status"></p>
     <input class="search story-share-link" aria-label="Ссылка на историю" id="story-share-link" readonly hidden>
-    <div class="dialog-foot"><button class="text-button" type="button" id="translate-toggle" aria-pressed="true">Скрыть перевод</button><button class="text-button" type="button" id="story-share">Ссылка ↗</button><button class="text-button" type="button" id="story-restart">С начала ↺</button></div>
+    <div class="dialog-foot"><button class="text-button" type="button" id="translate-toggle" aria-pressed="true">Скрыть перевод</button><button class="text-button" type="button" id="story-bookmark" aria-pressed="false">В закладки</button><button class="text-button" type="button" id="story-share">Ссылка ↗</button><button class="text-button" type="button" id="story-restart">С начала ↺</button></div>
   </dialog>
 
   <dialog class="dialog progress-dialog" id="progress-dialog" aria-labelledby="progress-title">

@@ -117,7 +117,7 @@ function validationHeaders(res) {
 
 function safeProgress(data) {
   if (!data || Array.isArray(data) || typeof data !== 'object') throw invalid('Формат прогресса не поддерживается.');
-  const subset = Object.fromEntries(['sessions', 'favorites', 'bestQuiz', 'translated', 'activeDays', 'challengeDays', 'review', 'game', 'mistakes']
+  const subset = Object.fromEntries(['sessions', 'favorites', 'bookmarks', 'bestQuiz', 'translated', 'activeDays', 'challengeDays', 'review', 'game', 'mistakes']
     .filter((key) => Object.hasOwn(data, key)).map((key) => [key, data[key]]));
   const encoded = JSON.stringify(subset);
   if (Buffer.byteLength(encoded) > 96 * 1024) throw new RequestError(413, 'too_large', 'Файл прогресса слишком большой.');

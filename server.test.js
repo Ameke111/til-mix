@@ -111,6 +111,7 @@ test('progress and feedback are isolated per account and stale revisions do not 
   const savedProgress = {
     bestQuiz: 4,
     favorites: ['Сәлем!'],
+    bookmarks: { coffee: { saved: true, updated: Date.now() }, 'en-cafe': { saved: false, updated: Date.now() } },
     game: {
       days: { 20773: 1 },
       chapters: { city: 4 },

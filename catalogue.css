@@ -5,6 +5,30 @@
 .catalogue-selection { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0 0 14px; }
 .catalogue-selection p { color: var(--muted); font-size: .875rem; font-weight: 700; }
 .catalogue-selection button { min-height: 44px; font-size: .875rem; }
+.catalogue-selection-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: end; }
+.bookmark-filter { border: 1px solid #cbd5be; background: #fffdf6; }
+.bookmark-filter[aria-pressed="true"] { background: #173b2b; color: #e0f7b0; border-color: #173b2b; }
+.lesson-actions { display: flex; gap: 8px; align-items: stretch; margin-top: 4px; min-width: 0; }
+.lesson-actions .card-action { flex: 1; min-width: 0; margin: 0; min-height: 44px; }
+.lesson-actions .card-action > span:last-child { display: none; }
+.lesson-bookmark { flex: 0 0 44px; min-height: 44px; border-radius: 10px; border: 1px solid #cbd5be; background: #f5f6ee; color: #476630; font-size: 1.6rem; line-height: 1; transition: background .18s, transform .18s; }
+.lesson-bookmark:hover { background: #e4f1c7; }
+.lesson-bookmark[aria-pressed="true"] { color: #3e5c20; background: #dff1ac; border-color: #9bbd64; }
+.lesson-bookmark:active { transform: scale(.92); }
+.resume-lessons { margin: 0 0 24px; padding: 20px; border: 1px solid #cbd9bd; border-radius: 20px; background: linear-gradient(120deg, #e9f1dc, #f6f8ee); }
+.resume-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 14px; }
+.resume-heading .eyebrow { font-size: .7rem; margin-bottom: 4px; }
+.resume-heading h3 { font-size: 1.3rem; letter-spacing: -.025em; }
+.resume-heading > p { font-size: .875rem; color: var(--muted); }
+.resume-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.resume-card { text-align: left; display: grid; gap: 8px; padding: 16px; border: 1px solid #cedcc0; border-radius: 14px; background: #fffef8; transition: transform .18s, box-shadow .18s; }
+.resume-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px #24462e12; }
+.resume-label { font-size: .8rem; color: #4c6536; }
+.resume-card strong { font-size: 1rem; }
+.resume-caption { font-size: .875rem; color: var(--muted); line-height: 1.4; }
+.story-dialog .dialog-foot { flex-wrap: wrap; gap: 4px 12px; }
+.story-dialog .dialog-foot button { min-height: 44px; }
+#story-bookmark[aria-pressed="true"] { color: #476820; }
 .catalogue-empty { padding: 36px 20px; text-align: center; border: 1px dashed #b7c5a6; border-radius: 20px; background: #eef2e5; }
 .catalogue-empty > span { display: block; font-size: 2.5rem; color: #55773e; }
 .catalogue-empty h3 { font-size: 1.25rem; margin: 5px 0 10px; }
@@ -13,9 +37,26 @@
   .catalogue-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
+  .story-grid { grid-template-columns: 1fr; }
+  .story-grid .card-art { height: 112px; }
+  .story-grid .card-content { padding: 14px; }
+  .story-grid .card-content h3 { font-size: 1.1rem; }
+  .story-grid .card-content p { font-size: .875rem; }
   .catalogue-fields { gap: 8px; }
   .catalogue-fields .search { grid-column: 1 / -1; }
   #story-sort { grid-column: 1 / -1; }
   .catalogue-selection { align-items: start; }
   .catalogue-selection p { padding-top: 12px; }
+  .catalogue-selection { flex-wrap: wrap; }
+  .catalogue-selection-actions { justify-content: start; gap: 8px; }
+  .resume-lessons { padding: 14px; }
+  .resume-heading { align-items: start; flex-direction: column; gap: 6px; }
+  .story-dialog .dialog-foot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding-inline: 12px; }
+  .story-dialog .dialog-foot button { font-size: .875rem; }
+}
+@media (max-width: 760px) {
+  .resume-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .resume-card, .lesson-bookmark { transition: none; }
 }

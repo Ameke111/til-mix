@@ -4,7 +4,7 @@ const normalize = (text, language) => text.normalize('NFC').toLocaleLowerCase(la
 
 export function lessonState(story, session) {
   const completed = Boolean(session?.endings?.length);
-  const started = Boolean(session && session.scene !== 'start' && !story.scenes[session.scene]?.end);
+  const started = Boolean(session && session.scene !== 'start' && story.scenes[session.scene] && !story.scenes[session.scene].end);
   const total = Object.values(story.scenes).filter(({ end }) => end).length;
   return { completed, started, mastered: session?.endings?.length === total, untouched: !completed && !started };
 }
