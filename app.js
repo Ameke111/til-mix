@@ -17,6 +17,7 @@ import { LANGUAGES, storyLanguage } from './languages.js';
 import { selectLessons } from './catalogue.js';
 import { readBookmarks, setBookmark, mergeBookmarks, resumableLessons } from './lesson-library.js';
 import { reviewSelection } from './review-selection.js';
+import { createReviewRound, answerReview, reviewOutcome } from './review-round.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -110,6 +111,7 @@ let savedLessonsOnly = false;
 let showAllPhrases = false;
 let quiz;
 let reviewSession;
+let reviewReport;
 let activeAudio;
 let endingReward = 0;
 const quizPlaceholder = $('#quiz').firstElementChild.cloneNode(true);
@@ -276,6 +278,7 @@ function snapshot() {
 }
 
 function swapProgress(raw) {
+  reviewReport = undefined;
   assistant.reset();
   if (storyDialog.open) storyDialog.close();
   stopSpeech();
@@ -754,10 +757,14 @@ function renderReviewSummary(message = '') {
   $('#review-mode-note').textContent = free
     ? 'Любые сохранённые карточки. Расписание и XP не меняются.'
     : 'Повтори карточки, срок которых уже наступил. Оценка обновит расписание.';
+  if (reviewReport) {
+    renderReviewReport();
+    return;
+  }
   const intro = elem('p', 'review-count', count ? (free ? 'Для тренировки: ' : 'На сегодня: ') + count : 'Нет карточек для повторения');
   const upcoming = selection.nextDue === null ? '' : ' Следующее повторение через ' + (selection.nextDue - localDay()) + ' дн.';
   const caption = elem('p', '', message || (count
-    ? 'За один подход — до восьми карточек.'
+    ? 'До восьми разных фраз. Если не вспомнишь ответ, карточка вернётся ещё один раз в конце подхода.'
     : selection.all.length ? 'Все выбранные карточки уже повторены.' + upcoming + ' Можно выбрать свободную тренировку.'
       : 'В этой подборке пока нет карточек. Добавь фразы из словаря или выбери другую тему и урок.'));
   const totals = elem('p', 'review-selection-count', 'В подборке: ' + selection.all.length + ' · На сегодня: ' + selection.due.length);
@@ -771,10 +778,65 @@ function startReview() {
   const free = $('#review-mode').value === 'free';
   const queue = (free ? shuffle(selection.all) : selection.due).slice(0, 8);
   if (!queue.length) return;
-  reviewSession = { queue, index: 0, revealed: false, graded: 0, earned: 0, free, direction: $('#review-direction').value, recalled: 0 };
+  beginReviewRound(queue, { free, direction: $('#review-direction').value });
+}
+
+function beginReviewRound(queue, options) {
+  reviewReport = undefined;
+  reviewSession = createReviewRound(queue, options);
   renderReviewSummary();
   renderReviewCard();
   $('#review-content').scrollIntoView({ block: 'nearest' });
+}
+
+function renderReviewReport() {
+  const report = reviewReport;
+  const panel = elem('div', 'review-report');
+  const heading = elem('h3', '', 'Подход завершён');
+  heading.tabIndex = -1;
+  const stats = elem('dl', 'review-report-stats');
+  for (const [label, count] of [['С первого раза', report.firstTry], ['Закреплено', report.recovered], ['Ещё практики', report.pending]]) {
+    const item = elem('div');
+    item.append(elem('dt', '', label), elem('dd', '', String(count)));
+    stats.append(item);
+  }
+  panel.append(elem('p', 'review-report-label', 'ТВОЙ РЕЗУЛЬТАТ'), heading,
+    elem('p', '', 'Разных фраз: ' + report.total + (report.earned ? ' · +' + report.earned + ' XP' : '')), stats);
+  panel.append(elem('p', 'review-report-note', report.free
+    ? 'Свободная тренировка: расписание и XP не изменились.'
+    : 'Расписание обновлено по первому ответу. Повторные показы помогли закрепить фразы и не изменили интервалы.'));
+  if (report.difficult.length) {
+    const details = elem('details', 'review-difficult');
+    details.append(elem('summary', '', 'Разобрать трудные фразы · ' + report.difficult.length));
+    const list = elem('ul');
+    for (const { phrase, last } of report.difficult) {
+      const item = elem('li');
+      const line = elem('div', 'review-difficult-line');
+      line.append(kazakh('strong', '', phrase), audioButton(phrase));
+      item.append(line, elem('p', '', phrases.get(phrase).ru), elem('span', 'review-outcome', last === 'known' ? '✓ Вспомнил при повторе' : 'Ещё стоит потренировать'));
+      list.append(item);
+    }
+    details.append(list);
+    panel.append(details);
+    const retry = button('button button-primary', 'Повторить сложные · ' + report.difficult.length, () => {
+      const queue = report.difficult.map(({ phrase }) => phrase).filter((phrase) => progress.review[phrase]);
+      if (!queue.length) {
+        reviewReport = undefined;
+        renderReviewSummary();
+        return;
+      }
+      $('#review-mode').value = 'free';
+      $('#review-mode-note').textContent = 'Закрепляем трудные фразы. Расписание и XP не меняются.';
+      beginReviewRound(queue, { free: true, direction: report.direction });
+    });
+    panel.append(retry);
+  } else if (report.total) panel.append(elem('p', 'review-all-known', '✓ Все фразы вспомнились с первого раза.'));
+  panel.append(button('text-button', 'Вернуться к подборке', () => {
+    reviewReport = undefined;
+    renderReviewSummary();
+    ($('#review-start').disabled ? $('#review-mode') : $('#review-start')).focus({ preventScroll: true });
+  }));
+  $('#review-content').replaceChildren(panel);
 }
 
 function renderReviewCard() {
@@ -785,19 +847,19 @@ function renderReviewCard() {
   const kk = reviewSession.queue[reviewSession.index];
   const content = $('#review-content');
   if (!kk) {
-    const { graded: total, earned, free, recalled } = reviewSession;
+    reviewReport = reviewOutcome(reviewSession);
     reviewSession = undefined;
     renderRoute();
     save();
-    renderReviewSummary(total ? 'Повторено: ' + total + ' · Вспомнил: ' + recalled + (earned ? ' · +' + earned + ' XP' : '')
-      + (free ? '. Свободная тренировка завершена.' : '. Расписание обновлено.') : '');
-    const first = content.firstElementChild;
+    renderReviewSummary();
+    const first = content.querySelector('h3');
     first.tabIndex = -1;
     first.focus({ preventScroll: true });
     return;
   }
   const bar = elem('div', 'review-card-head');
   const reverse = reviewSession.direction === 'ru-target';
+  const retry = Boolean(reviewSession.answers[kk]);
   bar.append(elem('p', 'quiz-step', 'КАРТОЧКА ' + (reviewSession.index + 1) + ' ИЗ ' + reviewSession.queue.length));
   if (!reverse || reviewSession.revealed) bar.append(audioButton(kk));
   const prompt = reverse ? elem('p', 'review-phrase', phrases.get(kk).ru) : kazakh('p', 'review-phrase', kk);
@@ -808,6 +870,7 @@ function renderReviewCard() {
   meter.value = reviewSession.index;
   meter.setAttribute('aria-label', 'Повторено карточек');
   body.append(bar, meter, prompt);
+  if (retry) body.append(elem('p', 'review-retry-label', 'Закрепление · попробуй вспомнить ещё раз. Расписание и XP не меняются.'));
   if (!reviewSession.revealed) {
     body.append(button('button button-outline', 'Показать перевод', () => {
       reviewSession.revealed = true;
@@ -822,17 +885,15 @@ function renderReviewCard() {
       : [['again', 'Ещё раз'], ['hard', 'Сложно'], ['known', 'Знаю']];
     for (const [grade, label] of grades) {
       const gradeButton = button('button button-outline', label, () => {
+        const result = answerReview(reviewSession, grade);
+        if (!result) return;
         const day = localDay();
         const before = experience();
-        if (!reviewSession.free) {
+        if (!reviewSession.free && result.firstAttempt) {
           progress.review[kk] = scheduleReview(progress.review[kk], grade, day);
           countReview(progress.game, day, kk);
         }
         reviewSession.earned += experience() - before;
-        reviewSession.index++;
-        reviewSession.graded++;
-        if (grade === 'known') reviewSession.recalled++;
-        reviewSession.revealed = false;
         recordActivity('review', day);
         save();
         renderRoute();
@@ -842,7 +903,7 @@ function renderReviewCard() {
       actions.append(gradeButton);
     }
     body.append(actions);
-    if (!reviewSession.free) {
+    if (!reviewSession.free && !retry) {
       const intervals = grades.map(([grade, label]) => {
         const days = scheduleReview(progress.review[kk], grade, localDay()).due - localDay();
         return label + ' — ' + (days === 0 ? 'сегодня' : days === 1 ? 'завтра' : 'через ' + days + ' дн.');
@@ -1152,6 +1213,7 @@ for (const id of ['review-category', 'review-lesson', 'review-direction', 'revie
   stopSpeech();
   const interrupted = Boolean(reviewSession);
   reviewSession = undefined;
+  reviewReport = undefined;
   renderReviewSummary(interrupted ? 'Подборка изменена. Оценённые карточки сохранены; начни новый подход.' : '');
 });
 $('#story-search').addEventListener('input', () => {
@@ -1198,6 +1260,7 @@ function updateNavigation() {
 function changeLanguage(language, remember = true) {
   if (!Object.hasOwn(LANGUAGES, language)) return;
   stopSpeech();
+  reviewReport = undefined;
   activeLanguage = language;
   lessonOrder = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === language).flatMap(({ ids }) => ids);
   const course = LANGUAGES[language];
