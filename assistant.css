@@ -89,6 +89,16 @@
 .assistant-meta button { min-height: 44px; flex-shrink: 0; }
 .assistant-meta button:disabled { opacity: .6; cursor: default; }
 .assistant-notice:not(:empty) { font-size: .84rem; padding-bottom: 5px; }
+.assistant-example-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.assistant-example-actions .assistant-chip { font-size: .78rem; min-height: 36px; }
+.assistant-practice-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
+.assistant-practice-tools > button { font-size: .76rem; min-height: 36px; padding: 5px 8px; }
+.assistant-letters { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
+.assistant-letters button { min-width: 30px; min-height: 36px; padding: 4px 8px; }
+.assistant-word-marks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.assistant-word-marks span { border-radius: 7px; padding: 3px 7px; background: #f5e4d8; }
+.assistant-word-marks [data-correct="true"] { background: #e2efcd; }
+.assistant-compose { max-height: 60%; overflow-y: auto; }
 .story-assistant { justify-self: start; margin-bottom: 3px; }
 @media (min-width: 1001px) {
   .nav { gap: clamp(10px, 1.8vw, 25px); }

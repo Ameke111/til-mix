@@ -1,7 +1,7 @@
 import { starterQuestions } from './assistant-data.js';
-import { createAssistant, questionLimit } from './assistant.js';
+import { checkPractice, createAssistant, questionLimit } from './assistant.js';
 
-export function setupAssistant({ stories, elem, button, kazakh, audioButton, stopSpeech, openLesson }) {
+export function setupAssistant({ stories, elem, button, kazakh, audioButton, stopSpeech, openLesson, savePhrase }) {
   const titles = new Map(stories.map(({ id, title }) => [id, title]));
   const dialog = document.querySelector('#assistant-dialog');
   const title = document.querySelector('#assistant-title');
@@ -14,6 +14,8 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   let context = {};
   let more;
   let moreButton;
+  let conversation = {};
+  let practice;
   input.maxLength = questionLimit;
 
   function lessonButton(id, text) {
@@ -24,6 +26,8 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   }
 
   function renderWelcome() {
+    conversation = { ...context };
+    practice = undefined;
     more = undefined;
     moreButton = undefined;
     input.value = '';
@@ -39,6 +43,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     log.replaceChildren(intro);
     log.scrollTop = 0;
     clear.disabled = true;
+    showPracticeControls();
   }
 
   function renderAnswer(result) {
@@ -49,6 +54,19 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
       const header = elem('div', 'assistant-example-head');
       header.append(kazakh('strong', '', example.kk), audioButton(example.kk));
       card.append(header, elem('p', '', example.ru));
+      const actions = elem('div', 'assistant-example-actions');
+      actions.append(button('assistant-chip', 'Разобрать', () => {
+        conversation = { lesson: example.lesson, phrase: example.kk };
+        ask('Разбери фразу');
+      }), button('assistant-chip', 'Практика', () => startPractice(example)));
+      const save = button('assistant-chip', 'В карточки', () => {
+        savePhrase(example.kk);
+        save.textContent = '✓ В карточках';
+        save.disabled = true;
+        notice.textContent = 'Фраза добавлена в повторение.';
+      });
+      actions.append(save);
+      card.append(actions);
       if (result.lesson !== example.lesson) card.append(lessonButton(example.lesson, 'Урок «' + titles.get(example.lesson) + '» ↗'));
       reply.append(card);
     }
@@ -60,24 +78,104 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     return reply;
   }
 
+  function appendTurn(question, reply) {
+    const turn = elem('div', 'assistant-turn');
+    turn.append(elem('p', 'assistant-question', question), reply);
+    log.append(turn);
+    if (log.childElementCount > 9) log.firstElementChild.remove();
+    clear.disabled = false;
+    log.scrollTop = Math.max(0, turn.offsetTop - 10);
+  }
+
+  function startPractice(example) {
+    stopSpeech();
+    practice = example;
+    conversation = { lesson: example.lesson, phrase: example.kk };
+    more = undefined;
+    moreButton?.remove();
+    const reply = elem('div', 'assistant-reply');
+    reply.append(elem('p', '', 'Напиши по-казахски реплику из урока'), elem('strong', '', example.ru));
+    appendTurn('Хочу потренироваться', reply);
+    showPracticeControls();
+    input.focus({ preventScroll: true });
+  }
+
+  function showPracticeControls() {
+    document.querySelector('#assistant-practice-tools')?.remove();
+    input.placeholder = practice ? 'Твой ответ по-казахски…' : 'Напиши вопрос…';
+    form.querySelector('[type="submit"]').textContent = practice ? 'Проверить' : 'Спросить';
+    input.setAttribute('aria-label', practice ? 'Ответ по-казахски' : 'Вопрос по казахскому');
+    if (!practice) return;
+    const tools = elem('div', 'assistant-practice-tools');
+    tools.id = 'assistant-practice-tools';
+    tools.append(button('assistant-chip', 'Подсказка', () => {
+      notice.textContent = 'Начни с «' + practice.kk.split(/\s/)[0] + '». ' + (practice.note ?? 'Сверься с репликой выше.');
+    }), button('assistant-chip', 'Показать ответ', () => {
+      const example = practice;
+      practice = undefined;
+      showPracticeControls();
+      appendTurn('Покажи ответ', renderAnswer({ text: 'Повтори фразу, затем попробуй ещё раз.', examples: [example] }));
+    }), button('assistant-chip', 'Завершить практику', () => {
+      practice = undefined;
+      notice.textContent = 'Можно задать новый вопрос.';
+      showPracticeControls();
+    }));
+    const letters = elem('div', 'assistant-letters');
+    letters.setAttribute('role', 'group');
+    letters.setAttribute('aria-label', 'Казахские буквы');
+    for (const letter of 'әғқңөұүһі') letters.append(button('assistant-chip', letter, () => {
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? start;
+      if (input.value.length - (end - start) >= questionLimit) return;
+      input.setRangeText(letter, start, end, 'end');
+      input.focus({ preventScroll: true });
+    }));
+    tools.append(letters);
+    form.before(tools);
+  }
+
+  function submitPractice(question) {
+    const result = checkPractice(question, practice.kk);
+    const reply = elem('div', 'assistant-reply');
+    if (result.correct) {
+      reply.append(elem('p', '', 'Дұрыс! Ты вспомнил реплику.'), audioButton(practice.kk));
+      practice = undefined;
+      showPracticeControls();
+    } else {
+      reply.append(elem('p', '', 'Сравни порядок слов и казахские буквы. Попробуй ещё раз или открой подсказку.'));
+      const marks = elem('p', 'assistant-word-marks');
+      for (const [index, word] of result.words.entries()) {
+        const mark = elem('span', '', word.correct ? word.word + ' ✓' : 'Слово ' + (index + 1) + ' ·');
+        mark.dataset.correct = String(word.correct);
+        marks.append(mark);
+      }
+      reply.append(marks);
+      if (result.extra) reply.append(elem('p', '', 'Лишних слов — ' + result.extra + '.'));
+    }
+    appendTurn(question, reply);
+  }
+
   function ask(raw) {
     const question = raw.trim();
     if (!question) return;
     input.value = '';
+    notice.textContent = '';
+    if (practice) {
+      submitPractice(question);
+      return;
+    }
     moreButton?.remove();
     moreButton = undefined;
     const continuation = /^ещ[её] примеры[.!?]*$/i.test(question);
     const result = continuation && more
       ? helper.more(more)
-      : helper.answer(question, context);
-    const turn = elem('div', 'assistant-turn');
+      : helper.answer(question, conversation);
     const reply = renderAnswer(result);
-    turn.append(elem('p', 'assistant-question', question), reply);
-    log.append(turn);
-    if (log.childElementCount > 9) log.firstElementChild.remove();
+    if (result.examples.length) {
+      conversation = { lesson: result.examples[0].lesson, phrase: result.examples[0].kk };
+    }
+    appendTurn(question, reply);
     more = result.more;
-    clear.disabled = false;
-    log.scrollTop = Math.max(0, turn.offsetTop - 10);
     if (document.activeElement !== input && !dialog.contains(document.activeElement)) log.focus({ preventScroll: true });
   }
 

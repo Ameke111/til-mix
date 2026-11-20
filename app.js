@@ -1111,6 +1111,10 @@ const speaking = setupSpeaking({
 });
 const assistant = setupAssistant({
   stories: TIL_STORIES, elem, button, kazakh, audioButton, stopSpeech,
+  savePhrase(phrase) {
+    addToReview(phrase);
+    save();
+  },
   openLesson(id) {
     if (storyDialog.open && currentStory.id === id) return;
     openStory(id, storyDialog.open ? lastStoryButton : $('#open-assistant'));

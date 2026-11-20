@@ -15,8 +15,28 @@ function normalize(text) {
   return text.normalize('NFKC').toLowerCase().replaceAll('ё', 'е').replace(/[\s\p{P}\p{S}]+/gu, ' ').trim();
 }
 
+const synonyms = new Map([
+  ['заплатить', 'оплатить'], ['оплата', 'оплатить'], ['деньги', 'оплатить'],
+  ['стоимость', 'цена'], ['цену', 'цена'], ['стоит', 'цена'],
+  ['покушать', 'еда'], ['поесть', 'еда'], ['универ', 'университет'],
+  ['возврат', 'вернуть'], ['перенос', 'перенести']
+]);
+
 function terms(text) {
-  return [...new Set(normalize(text).split(' ').filter((word) => word.length >= 2 && !filler.has(word)))];
+  return [...new Set(normalize(text).split(' ').filter((word) => word.length >= 2 && !filler.has(word))
+    .map((word) => synonyms.get(word) ?? word))];
+}
+
+export function checkPractice(answer, expected) {
+  const actual = normalize(answer);
+  const target = normalize(expected);
+  const words = target.split(' ');
+  const typed = actual.split(' ');
+  return {
+    correct: actual === target,
+    words: words.map((word, index) => ({ word, correct: word === typed[index] })),
+    extra: Math.max(0, typed.length - words.length)
+  };
 }
 
 function features(text) {
@@ -151,6 +171,15 @@ export function createAssistant(stories) {
     if (/^(привет|здравствуйте|сәлем|сәлеметсіз бе|добрый день|қайырлы күн)$/.test(normalized)) {
       return pack('hello', 'Сәлем! Могу подобрать фразы для ситуации, помочь с переводом из урока или объяснить правило на примерах. Что разберём?');
     }
+    if (/^(объясни|объясни проще|почему так|разбери фразу|түсіндір|түсіндірші)$/.test(normalized)) {
+      if (!original) return pack('unknown', 'Какую фразу разберём? Напиши её или открой помощника из урока.');
+      const related = notes.find((entry) => entry.examples.some((example) => example.key === original.key));
+      return pack('explanation', original.note ?? related?.text ?? 'Запомни эту реплику целиком и сравни с её переводом. Можно закрепить её в короткой практике.', [original]);
+    }
+    if (/^(а какой урок|какой урок|откуда эта фраза|покажи урок|қай сабақ)$/.test(normalized) && original) {
+      const source = lessons.find(({ id }) => id === original.lesson);
+      return pack('lesson', `${source.title} · ${source.level}. ${source.description}`, [original], source.id);
+    }
     if (wantsGrammar && note) {
       return pack('grammar', note.title + '. ' + note.text, note.examples);
     }
@@ -175,5 +204,9 @@ export function createAssistant(stories) {
     return pack('unknown', 'В уроках не нашлось уверенного ответа. Попробуй написать одну фразу или назови ситуацию, например «заказать чай» или «спросить цену».');
   }
 
-  return { answer, more: ({ kind, text, examples, lesson, offset }) => pack(kind, text, examples, lesson, offset) };
+  return {
+    answer,
+    phrase: (text) => phrases.get(normalize(text)),
+    more: ({ kind, text, examples, lesson, offset }) => pack(kind, text, examples, lesson, offset)
+  };
 }

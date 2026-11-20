@@ -1,9 +1,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAssistant } from './assistant.js';
+import { checkPractice, createAssistant } from './assistant.js';
 import { TIL_STORIES } from './stories.js';
 
 const assistant = createAssistant(TIL_STORIES);
+
+test('follow-up explanations use the chosen phrase and preserve its source lesson', () => {
+  const first = assistant.answer('Что значит «Алып кетемін»?');
+  const context = { phrase: first.examples[0].kk, lesson: first.examples[0].lesson };
+  assert.equal(assistant.answer('Объясни проще', context).examples[0].kk, 'Алып кетемін.');
+  assert.equal(assistant.answer('А какой урок?', context).lesson, 'coffee');
+  assert.equal(assistant.answer('Объясни проще').kind, 'unknown');
+});
+
+test('chat practice accepts punctuation but preserves Kazakh letters and word order', () => {
+  assert.equal(checkPractice('АЛЫП КЕТЕМІН!', 'Алып кетемін.').correct, true);
+  assert.equal(checkPractice('Алып кетемин', 'Алып кетемін.').correct, false);
+  const swapped = checkPractice('кетемін алып тағы', 'Алып кетемін.');
+  assert.equal(swapped.correct, false);
+  assert.equal(swapped.extra, 1);
+  assert.ok(swapped.words.every(({ correct }) => !correct));
+});
 
 test('translates a lesson line with typographic punctuation and a Kazakh question', () => {
   const answer = assistant.answer('«АЛЫП КЕТЕМІН!» нені білдіреді?');
