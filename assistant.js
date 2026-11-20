@@ -11,8 +11,8 @@ const filler = new Set((
   'қазақша орысша бұл болады мысал мысалдар сабақ сабақты ұсыншы түсіндір сұраймын'
 ).split(' '));
 
-function normalize(text) {
-  return text.normalize('NFKC').toLowerCase().replaceAll('ё', 'е').replace(/[\s\p{P}\p{S}]+/gu, ' ').trim();
+function normalize(text, language = 'kk') {
+  return text.normalize('NFKC').toLocaleLowerCase(language).replaceAll('ё', 'е').replace(/[\s\p{P}\p{S}]+/gu, ' ').trim();
 }
 
 const synonyms = new Map([
@@ -27,9 +27,9 @@ function terms(text) {
     .map((word) => synonyms.get(word) ?? word))];
 }
 
-export function checkPractice(answer, expected) {
-  const actual = normalize(answer);
-  const target = normalize(expected);
+export function checkPractice(answer, expected, language = 'kk') {
+  const actual = normalize(answer, language);
+  const target = normalize(expected, language);
   const words = target.split(' ');
   const typed = actual.split(' ');
   return {
@@ -126,17 +126,18 @@ function pack(kind, text, examples = [], lesson, offset = 0) {
 }
 
 export function createAssistant(stories) {
+  const kazakhCourse = !stories[0]?.language || stories[0].language === 'kk';
   const phrases = collectPhrases(stories);
   const allPhrases = [...phrases.values()];
   const lessons = stories.map(({ id, title, description, level }) => ({
     id, title, description, level, terms: terms(`${title} ${description} ${level} ${level.replace('A', 'А')} ${lessonKeywords[id] ?? ''}`)
   }));
-  const notes = grammarNotes.map((note) => ({
+  const notes = (kazakhCourse ? grammarNotes : []).map((note) => ({
     ...note, terms: terms(note.cues.join(' ')), examples: note.examples.map((phrase) => phrases.get(normalize(phrase))).filter(Boolean)
   }));
-  const glossary = vocabulary.flatMap(([kk, ru, sample]) => {
+  const glossary = (kazakhCourse ? vocabulary : []).flatMap(([kk, ru, sample]) => {
     const example = phrases.get(normalize(sample));
-    return example ? [{ kk, ru, example, aliases: [kk, ...ru.split(', ')].map(normalize) }] : [];
+    return example ? [{ kk, ru, example, aliases: [kk, ...ru.split(', ')].map((text) => normalize(text)) }] : [];
   });
 
   function recommend(query, lesson) {

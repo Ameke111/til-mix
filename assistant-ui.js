@@ -1,7 +1,8 @@
 import { starterQuestions } from './assistant-data.js';
 import { checkPractice, createAssistant, questionLimit } from './assistant.js';
+import { LANGUAGES, storyLanguage } from './languages.js';
 
-export function setupAssistant({ stories, elem, button, kazakh, audioButton, stopSpeech, openLesson, savePhrase }) {
+export function setupAssistant({ stories, elem, button, kazakh, audioButton, stopSpeech, openLesson, savePhrase, getLanguage = () => 'kk' }) {
   const titles = new Map(stories.map(({ id, title }) => [id, title]));
   const dialog = document.querySelector('#assistant-dialog');
   const title = document.querySelector('#assistant-title');
@@ -32,6 +33,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   }
 
   function renderWelcome() {
+    helper = createAssistant(stories.filter((story) => storyLanguage(story) === getLanguage()));
     cancelModel();
     history = [];
     conversation = { ...context };
@@ -44,11 +46,12 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     intro.append(elem('p', '', context.lesson
       ? `Ты в уроке «${titles.get(context.lesson)}». Разберём реплику?`
       : mode.value === 'model'
-        ? 'Сәлем! Давай поговорим по-казахски. Можешь прислать свою фразу для разбора или задать вопрос о языке.'
-        : 'Сәлем! Спроси по-русски или по-казахски. Подберу примеры из наших диалогов.'));
+        ? 'Давай поговорим. Твой курс — ' + LANGUAGES[getLanguage()].name.toLowerCase() + '. Можешь прислать фразу для разбора или задать вопрос о языке.'
+        : 'Подберу примеры из курса «' + LANGUAGES[getLanguage()].name + '». Напиши фразу или назови ситуацию.'));
     const choices = elem('div', 'assistant-prompts');
     if (context.phrase) choices.append(button('assistant-chip', 'Переведи реплику', () => ask('Переведи реплику')));
-    for (const question of starterQuestions) choices.append(button('assistant-chip', question, () => ask(question)));
+    const questions = getLanguage() === 'kk' ? starterQuestions : ['Как сказать «Где станция?»', 'Переведи «Мне нужны яблоки»', 'Посоветуй урок про учёбу'];
+    for (const question of questions) choices.append(button('assistant-chip', question, () => ask(question)));
     intro.append(choices);
     log.replaceChildren(intro);
     log.scrollTop = 0;
@@ -105,7 +108,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     more = undefined;
     moreButton?.remove();
     const reply = elem('div', 'assistant-reply');
-    reply.append(elem('p', '', 'Напиши по-казахски реплику из урока'), elem('strong', '', example.ru));
+    reply.append(elem('p', '', 'Напиши реплику на изучаемом языке'), elem('strong', '', example.ru));
     appendTurn('Хочу потренироваться', reply);
     showPracticeControls();
     input.focus({ preventScroll: true });
@@ -113,9 +116,9 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
 
   function showPracticeControls() {
     document.querySelector('#assistant-practice-tools')?.remove();
-    input.placeholder = practice ? 'Твой ответ по-казахски…' : 'Напиши вопрос…';
+    input.placeholder = practice ? 'Твой перевод…' : 'Напиши вопрос…';
     form.querySelector('[type="submit"]').textContent = practice ? 'Проверить' : 'Спросить';
-    input.setAttribute('aria-label', practice ? 'Ответ по-казахски' : 'Вопрос по казахскому');
+    input.setAttribute('aria-label', practice ? 'Ответ на изучаемом языке' : 'Вопрос о языке');
     if (!practice) return;
     const tools = elem('div', 'assistant-practice-tools');
     tools.id = 'assistant-practice-tools';
@@ -133,8 +136,8 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     }));
     const letters = elem('div', 'assistant-letters');
     letters.setAttribute('role', 'group');
-    letters.setAttribute('aria-label', 'Казахские буквы');
-    for (const letter of 'әғқңөұүһі') letters.append(button('assistant-chip', letter, () => {
+    letters.setAttribute('aria-label', 'Буквы изучаемого языка');
+    for (const letter of LANGUAGES[getLanguage()].letters) letters.append(button('assistant-chip', letter, () => {
       const start = input.selectionStart ?? input.value.length;
       const end = input.selectionEnd ?? start;
       if (input.value.length - (end - start) >= input.maxLength) return;
@@ -146,14 +149,14 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
   }
 
   function submitPractice(question) {
-    const result = checkPractice(question, practice.kk);
+    const result = checkPractice(question, practice.kk, getLanguage());
     const reply = elem('div', 'assistant-reply');
     if (result.correct) {
-      reply.append(elem('p', '', 'Дұрыс! Ты вспомнил реплику.'), audioButton(practice.kk));
+      reply.append(elem('p', '', 'Верно! Ты вспомнил реплику.'), audioButton(practice.kk));
       practice = undefined;
       showPracticeControls();
     } else {
-      reply.append(elem('p', '', 'Сравни порядок слов и казахские буквы. Попробуй ещё раз или открой подсказку.'));
+      reply.append(elem('p', '', 'Сравни порядок слов и написание. Попробуй ещё раз или открой подсказку.'));
       const marks = elem('p', 'assistant-word-marks');
       for (const [index, word] of result.words.entries()) {
         const mark = elem('span', '', word.correct ? word.word + ' ✓' : 'Слово ' + (index + 1) + ' ·');
@@ -223,7 +226,7 @@ export function setupAssistant({ stories, elem, button, kazakh, audioButton, sto
     try {
       const response = await fetch('/api/assistant', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-        body: JSON.stringify({ messages, lesson: conversation.lesson, phrase: conversation.phrase })
+        body: JSON.stringify({ messages, language: getLanguage(), lesson: conversation.lesson, phrase: conversation.phrase })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Нейросеть сейчас недоступна.');

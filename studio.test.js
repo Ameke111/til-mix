@@ -7,7 +7,7 @@ import { gameStats, mergeGame, normalizeGame } from './game.js';
 const unchanged = (values) => values.slice();
 
 test('the studio has exercises for each lesson and four per topic', () => {
-  assert.equal(STUDIO_PROMPTS.length, 42);
+  assert.equal(STUDIO_PROMPTS.length, 90);
   assert.equal(new Set(STUDIO_PROMPTS.map(({ id }) => id)).size, STUDIO_PROMPTS.length);
   assert.deepEqual([...new Set(STUDIO_PROMPTS.map(({ lesson }) => lesson))].sort(), TIL_STORIES.map(({ id }) => id).sort());
   for (const category of Object.keys(TIL_CATEGORIES)) {
@@ -58,6 +58,18 @@ test('studio XP survives loading and merging without credit for assisted or dupl
   assert.deepEqual(readStudio(JSON.parse(JSON.stringify(first.studio))), ['coffee-order', 'hotel-breakfast']);
   const progress = { sessions: {}, challengeDays: [], bestQuiz: 0, game: first };
   assert.equal(gameStats(progress, new Map()).xp, 6);
+});
+
+test('language rounds stay within their course and Turkish casing is respected', () => {
+  for (const language of ['kk', 'en', 'tr']) {
+    const round = pickStudioRound({ language, category: 'all', solved: [], shuffle: unchanged, size: 100 });
+    assert.equal(round.length, language === 'kk' ? 42 : 24);
+    assert.ok(round.every((exercise) => exercise.language === language));
+  }
+  const exercise = STUDIO_PROMPTS.find(({ id }) => id === 'tr-shop-0');
+  assert.equal(checkWrittenAnswer(exercise, exercise.kk.toLocaleUpperCase('tr')), true);
+  assert.deepEqual(phraseWords('IŞIK İÇİN', 'tr'), ['ışık', 'için']);
+  assert.deepEqual(readStudio(['coffee-order', 'en-shop-0', 'tr-shop-0']), ['coffee-order', 'en-shop-0', 'tr-shop-0']);
 });
 
 test('writing accepts case and punctuation and keeps bonus progress separate from tiles', () => {

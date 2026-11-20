@@ -15,6 +15,17 @@ test('model requests reject supplied system instructions and oversized history',
   assert.throws(() => modelSettings({ TIL_AI_URL: 'http://example.com/chat', TIL_AI_MODEL: 'test' }));
 });
 
+test('model context follows the course and excludes lessons in another language', () => {
+  for (const [language, name] of [['en', 'Английский'], ['tr', 'Турецкий']]) {
+    const messages = modelMessages({ language, lesson: language + '-cafe', messages: [{ role: 'user', content: 'Переведи реплику' }] });
+    assert.ok(messages[0].content.includes(name));
+    assert.ok(messages[0].content.includes('Current lesson reference'));
+    assert.ok(!messages[0].content.includes('Мен оқимын'));
+    const foreign = modelMessages({ language, lesson: 'coffee', messages: [{ role: 'user', content: 'Привет' }] });
+    assert.ok(!foreign[0].content.includes('Current lesson reference'));
+  }
+});
+
 test('server proxies conversation and keeps credentials on the server', async (t) => {
   let received;
   const upstream = createServer(async (req, res) => {

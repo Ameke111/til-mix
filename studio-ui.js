@@ -1,7 +1,8 @@
 import { TIL_CATEGORIES } from './stories.js';
+import { LANGUAGES } from './languages.js';
 import { checkStudioAnswer, checkWrittenAnswer, mixStudioWords, pickStudioRound, STUDIO_PROMPTS } from './studio.js';
 
-export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shuffle, readSolved, onMiss, onSolve }) {
+export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shuffle, readSolved, onMiss, onSolve, getLanguage = () => 'kk' }) {
   const area = document.querySelector('#studio-stage');
   const category = document.querySelector('#studio-category');
   const mode = document.querySelector('#studio-mode');
@@ -17,12 +18,13 @@ export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shu
   }
 
   function updateSummary() {
-    record.textContent = 'Без подсказок · Собрано ' + readSolved('tiles').length + '/' + STUDIO_PROMPTS.length
-      + ' · Написано ' + readSolved('typing').length + '/' + STUDIO_PROMPTS.length;
+    const ids = new Set(STUDIO_PROMPTS.filter((item) => item.language === getLanguage()).map(({ id }) => id));
+    record.textContent = 'Без подсказок · Собрано ' + readSolved('tiles').filter((id) => ids.has(id)).length + '/' + ids.size
+      + ' · Написано ' + readSolved('typing').filter((id) => ids.has(id)).length + '/' + ids.size;
   }
 
   function begin(lesson, selectedMode = mode.value) {
-    const queue = pickStudioRound({ lesson, category: category.value, solved: readSolved(selectedMode), shuffle });
+    const queue = pickStudioRound({ lesson, language: getLanguage(), category: category.value, solved: readSolved(selectedMode), shuffle });
     if (!queue.length) return;
     round = { queue, lesson, mode: selectedMode, index: 0, results: [] };
     start.firstElementChild.textContent = 'Новый подход';
@@ -109,12 +111,12 @@ export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shu
     });
     const input = elem('input', 'studio-input');
     input.type = 'text';
-    input.lang = 'kk';
+    input.lang = getLanguage();
     input.autocomplete = 'off';
     input.spellcheck = false;
     input.maxLength = 180;
-    input.placeholder = 'Жауабыңды жаз';
-    input.setAttribute('aria-label', 'Ответ на казахском');
+    input.placeholder = 'Напиши перевод';
+    input.setAttribute('aria-label', 'Ответ · ' + LANGUAGES[getLanguage()].name);
     input.addEventListener('input', syncInput);
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' || event.isComposing) return;
@@ -127,15 +129,15 @@ export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shu
     area.replaceChildren(panel);
     if (typing) {
       answer.append(input);
-      bank.setAttribute('aria-label', 'Казахские буквы');
-      for (const letter of 'әғқңөұүһі') {
+      bank.setAttribute('aria-label', 'Буквы изучаемого языка');
+      for (const letter of LANGUAGES[getLanguage()].letters) {
         const key = button('studio-tile', letter, () => {
           if (input.value.length >= input.maxLength && input.selectionStart === input.selectionEnd) return;
           input.setRangeText(letter, input.selectionStart, input.selectionEnd, 'end');
           syncInput();
           input.focus({ preventScroll: true });
         });
-        key.lang = 'kk';
+        key.lang = getLanguage();
         bank.append(key);
       }
       syncInput();
@@ -157,7 +159,7 @@ export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shu
           renderTiles();
           bank.querySelector('[data-tile="' + id + '"]').focus({ preventScroll: true });
         });
-        tile.lang = 'kk';
+        tile.lang = getLanguage();
         tile.setAttribute('aria-label', text + ' · убрать из ответа');
         answer.append(tile);
       }
@@ -168,7 +170,7 @@ export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shu
           renderTiles();
           (bank.querySelector('button') || check).focus({ preventScroll: true });
         });
-        tile.lang = 'kk';
+        tile.lang = getLanguage();
         tile.dataset.tile = id;
         bank.append(tile);
       }
@@ -225,6 +227,8 @@ export function setupStudio({ elem, button, kazakh, audioButton, stopSpeech, shu
     },
     reset() {
       round = undefined;
+      const words = { kk: ['Қайда?', 'Оқу', 'залы'], en: ['Where?', 'The', 'library'], tr: ['Nerede?', 'Bu', 'kütüphane'] }[getLanguage()];
+      [...preview.children].forEach((node, index) => { node.textContent = words[index]; });
       area.replaceChildren(preview.cloneNode(true));
       start.firstElementChild.textContent = 'Начать';
       updateSummary();

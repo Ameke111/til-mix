@@ -1,0 +1,37 @@
+.header-row { grid-template-columns: auto 1fr auto; gap: 24px; padding-block: 10px; }
+.nav { grid-column: auto; grid-row: auto; justify-content: center; gap: 24px; flex-wrap: nowrap; }
+.learning-menu { position: relative; }
+.learning-menu summary { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: .89rem; font-weight: 800; min-height: 44px; padding: 9px 12px; border-radius: 10px; list-style: none; }
+.learning-menu summary::-webkit-details-marker { display: none; }
+.learning-menu summary:hover, .learning-menu[open] summary { background: #e9eedc; }
+.learning-menu summary:focus-visible { outline: 3px solid #7771b1; outline-offset: 3px; }
+.learning-menu-panel { position: absolute; top: calc(100% + 13px); left: 50%; transform: translateX(-50%); width: 450px; display: grid; grid-template-columns: 1fr 1.25fr; padding: 18px; gap: 14px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 18px 40px #17352725; border-radius: 16px; }
+.learning-menu-panel > div { display: flex; flex-direction: column; gap: 3px; }
+.menu-label { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 10px; }
+.nav .learning-menu-panel a { white-space: normal; min-height: 44px; display: flex; align-items: center; font-size: .84rem; padding: 7px 10px; border-radius: 8px; }
+.nav .learning-menu-panel a:hover { background: #edf1e2; }
+.course-picker select { appearance: auto; border: 1px solid #cbd5be; border-radius: 11px; background: #edf1e2; min-height: 44px; padding: 8px 6px; font-weight: 800; font-size: .86rem; max-width: 120px; }
+.hero h1 { font-size: clamp(2.2rem, 5vw, 4.5rem); }
+.header-actions { gap: 8px; }
+@media (max-width: 1050px) {
+  .progress-label { display: none; }
+  .header-row { gap: 10px; }
+  .nav { gap: 6px; }
+}
+@media (max-width: 760px) {
+  .header-row { grid-template-columns: auto 1fr; gap: 4px 8px; padding: 7px 0 2px; }
+  .header-actions { justify-self: end; }
+  .nav { grid-column: 1/-1; grid-row: 2; justify-content: center; }
+  #profile-trigger-text { display: none; }
+  .account-trigger { padding: 5px; min-width: 44px; }
+  .learning-menu { position: static; }
+  .site-header { position: relative; z-index: 6; }
+  .learning-menu-panel { top: 100%; left: 14px; right: 14px; width: auto; transform: none; }
+  .nav .learning-menu-panel a { justify-content: start; }
+  .course-picker select { max-width: 103px; }
+}
+@media (max-width: 380px) {
+  .header-actions { gap: 4px; }
+  .progress-toggle { padding-inline: 4px; }
+  .learning-menu-panel { padding: 12px; gap: 5px; grid-template-columns: 1fr 1.2fr; }
+}

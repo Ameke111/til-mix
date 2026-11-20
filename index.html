@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f6ef">
-  <meta name="description" content="Практикуй разговорный казахский через интерактивные истории, озвученные фразы и короткие задания.">
+  <meta name="description" content="Изучай казахский, английский и турецкий: 51 интерактивный урок, словарь, упражнения и языковой помощник.">
   <title>Тіл Mix — разговорный казахский</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./site.css">
@@ -17,15 +17,16 @@
       <a class="brand" href="#top" aria-label="Тіл Mix — главная"><span class="brand-mark" aria-hidden="true">Т</span><span>Тіл<span class="brand-space"> </span>Mix<span class="brand-dot">.</span></span></a>
       <nav class="nav" aria-label="Основная навигация">
         <a href="#path" aria-current="location">Маршрут</a>
-        <a href="#stories">Истории</a>
-        <a href="#studio">Фразы</a>
-        <a href="#listening">На слух</a>
-        <a href="#speaking">Говори</a>
-        <a href="#dictionary">Словарь</a>
-        <a href="#practice">Тренировка</a>
-        <a href="#assistant">Помощник</a>
+        <details class="learning-menu" id="learning-menu">
+          <summary>Занятия <span aria-hidden="true">⌄</span></summary>
+          <div class="learning-menu-panel">
+            <div><span class="menu-label">Изучай</span><a href="#stories">Диалоговые уроки</a><a href="#dictionary">Словарь</a><a href="#assistant">ИИ-помощник</a></div>
+            <div><span class="menu-label">Практикуй</span><a href="#studio">Собери и напиши фразу</a><a href="#practice">Проверка перевода</a><a href="#review">Карточки на повторение</a><a href="#listening" data-kazakh-only>Аудирование</a><a href="#speaking" data-kazakh-only>Произношение</a></div>
+          </div>
+        </details>
       </nav>
       <div class="header-actions">
+        <label class="course-picker"><span class="sr-only">Язык обучения</span><select id="course-language"><option value="kk">Қазақша</option><option value="en">English</option><option value="tr">Türkçe</option></select></label>
         <button class="button button-outline progress-toggle" type="button" data-open-progress aria-label="Мой прогресс"><span class="progress-icon" aria-hidden="true">◈</span><span class="progress-label">Мой прогресс</span><span class="xp-chip" id="nav-xp" aria-hidden="true">0 XP</span></button>
         <button class="button account-trigger" id="open-account" type="button"><span class="profile-dot" aria-hidden="true">Т</span><span id="profile-trigger-text">Профиль</span></button>
       </div>
@@ -135,7 +136,7 @@
       <div class="studio-intro">
         <p class="eyebrow"><span aria-hidden="true">✦</span> ПОРЯДОК СЛОВ</p>
         <h2 id="studio-title">Собери <br>фразу<span>.</span></h2>
-        <p>Переводи знакомые реплики. Собирай ответ из слов или напечатай его по-казахски.</p>
+        <p>Переводи знакомые реплики. Собирай ответ из слов или напечатай его на изучаемом языке.</p>
         <label for="studio-mode">Режим</label>
         <select id="studio-mode"><option value="tiles">Собрать из слов</option><option value="typing">Напечатать ответ</option></select>
         <label for="studio-category">Тема упражнения</label>
@@ -148,7 +149,7 @@
       </div>
     </section>
 
-    <section class="listening" id="listening" aria-labelledby="listening-title">
+    <section class="listening" id="listening" aria-labelledby="listening-title" data-kazakh-only>
       <div class="listening-intro">
         <h2 id="listening-title">Аудирование<span>.</span></h2>
         <p>Послушай пять фраз на казахском и выбери перевод. Запись можно включить ещё раз или замедлить.</p>
@@ -163,7 +164,7 @@
       </div>
     </section>
 
-    <section class="speaking" id="speaking" aria-labelledby="speaking-title">
+    <section class="speaking" id="speaking" aria-labelledby="speaking-title" data-kazakh-only>
       <div class="speaking-intro">
         <h2 id="speaking-title">Произношение<span>.</span></h2>
         <p>Послушай образец, произнеси фразу и сравни свою запись с ним.</p>
@@ -215,7 +216,7 @@
       </div>
       <div class="dictionary-filters">
         <label for="phrase-search">Поиск по словарю
-          <input class="search" id="phrase-search" type="search" placeholder="На русском или казахском">
+          <input class="search" id="phrase-search" type="search" placeholder="Фраза или перевод">
         </label>
         <label for="phrase-lesson">Урок
           <select class="search" id="phrase-lesson"><option value="">Все уроки</option></select>
@@ -279,7 +280,7 @@
       </div>
       <p id="assistant-connection" class="assistant-connection" role="status">Нейросеть доступна в серверной версии сайта.</p>
       <form class="assistant-form" id="assistant-form">
-        <label for="assistant-input" class="sr-only">Вопрос по казахскому</label>
+        <label for="assistant-input" class="sr-only">Вопрос о языке</label>
         <input id="assistant-input" class="search" name="question" autocomplete="off" enterkeyhint="send" placeholder="Напиши вопрос…" required>
         <button type="submit" class="button button-primary">Спросить</button>
       </form>
@@ -310,7 +311,7 @@
       <aside class="account-cover">
         <span class="profile-emblem" aria-hidden="true">Т<span>✳</span></span>
         <p class="eyebrow">ТІЛ MIX</p>
-        <p class="account-cover-title">Твой<br>казахский<span>.</span></p>
+        <p class="account-cover-title">Твой<br>прогресс<span>.</span></p>
         <p>Настрой цель и продолжай с того места, где остановился.</p>
         <span class="account-sticker" lang="kk" aria-hidden="true">Бірге үйренейік!</span>
       </aside>

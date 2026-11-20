@@ -13,6 +13,7 @@ import { setupCompanion, setupDailyPhrase } from './companion-ui.js';
 import { setupListening } from './listening-ui.js';
 import { setupSpeaking } from './speaking-ui.js';
 import { setupAssistant } from './assistant-ui.js';
+import { LANGUAGES, storyLanguage } from './languages.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storyDialog = $('#story-dialog');
@@ -25,7 +26,21 @@ const stories = new Map(TIL_STORIES.map((story) => [story.id, {
 }]));
 const phrases = new Map();
 const totalEndings = [...stories.values()].reduce((total, story) => total + story.endingCount, 0);
-const lessonOrder = TIL_ROUTE.flatMap(({ ids }) => ids);
+let activeLanguage = 'kk';
+try {
+  const requested = new URL(location.href).searchParams;
+  const shared = stories.get(requested.get('lesson'));
+  const language = shared ? storyLanguage(shared) : requested.get('lang') || localStorage.getItem('til-mix-language');
+  if (Object.hasOwn(LANGUAGES, language)) activeLanguage = language;
+} catch { /* Use the Kazakh course when preferences are unavailable. */ }
+let lessonOrder = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === activeLanguage).flatMap(({ ids }) => ids);
+
+function phraseLanguage(text) {
+  const lesson = phrases.get(text)?.lessons.values().next().value;
+  return lesson ? storyLanguage(stories.get(lesson)) : activeLanguage;
+}
+
+function currentPhrase(phrase) { return phraseLanguage(phrase.kk) === activeLanguage; }
 
 for (const story of TIL_STORIES) {
   for (const scene of Object.values(story.scenes)) {
@@ -95,7 +110,8 @@ let endingReward = 0;
 const quizPlaceholder = $('#quiz').firstElementChild.cloneNode(true);
 
 function challenge(day = localDay()) {
-  return TIL_STORIES[day % TIL_STORIES.length];
+  const course = TIL_STORIES.filter((story) => storyLanguage(story) === activeLanguage);
+  return course[day % course.length];
 }
 
 function streak() {
@@ -131,7 +147,7 @@ function recordActivity(type, day = localDay()) {
 
 function renderWeekSummary() {
   const day = localDay();
-  const due = duePhrases(progress.review, day).length;
+  const due = duePhrases(progress.review, day).filter((text) => phraseLanguage(text) === activeLanguage).length;
   renderWeek(day, progress.activeDays, account.getGoal(), due);
   renderDailyPhrase(day);
 }
@@ -188,9 +204,10 @@ function renderRoute() {
   listening.updateSummary();
   renderWeekSummary();
   $('#streak-text').textContent = 'Серия: ' + streak() + ' дн.';
-  const firstUnfinished = TIL_ROUTE.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
-  $('#path-summary').textContent = 'Пройдено уроков: ' + stats.completed.size + ' из ' + TIL_STORIES.length;
-  const steps = TIL_ROUTE.map((chapter, index) => {
+  const chapters = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === activeLanguage);
+  const firstUnfinished = chapters.findIndex(({ ids }) => ids.some((id) => !stats.completed.has(id)));
+  $('#path-summary').textContent = LANGUAGES[activeLanguage].name + ' · пройдено ' + lessonOrder.filter((id) => stats.completed.has(id)).length + ' из ' + lessonOrder.length;
+  const steps = chapters.map((chapter, index) => {
     const { id, title, level, ids } = chapter;
     const completed = ids.filter((id) => stats.completed.has(id));
     const next = ids.find((id) => !completed.includes(id)) || ids[0];
@@ -315,7 +332,7 @@ function button(className, text, action) {
 
 function kazakh(tag, className, text) {
   const el = elem(tag, className, text);
-  el.lang = 'kk';
+  el.lang = phraseLanguage(text);
   return el;
 }
 
@@ -359,14 +376,15 @@ function audioButton(kk, slow = false) {
       return;
     }
     const synthesis = window.speechSynthesis;
-    const voice = synthesis?.getVoices().find(({ lang }) => /^kk(?:[-_]|$)/i.test(lang));
+    const language = phraseLanguage(kk);
+    const voice = synthesis?.getVoices().find(({ lang }) => lang.toLowerCase().split(/[-_]/)[0] === language);
     if (!voice) {
-      notify('Казахский голос недоступен в этом браузере. Установи голос kk-KZ в настройках устройства.');
+      notify('Голос «' + LANGUAGES[language].name + '» недоступен. Установи голос ' + LANGUAGES[language].voice + ' в настройках устройства.');
       return;
     }
     stopSpeech();
     const utterance = new SpeechSynthesisUtterance(kk);
-    utterance.lang = 'kk-KZ';
+    utterance.lang = LANGUAGES[language].voice;
     utterance.voice = voice;
     utterance.rate = slow ? 0.65 : 0.95;
     activeAudio = el;
@@ -447,6 +465,7 @@ function sessionFor(story) {
 }
 
 function openStory(id, trigger, fromDemo = false) {
+  if (storyLanguage(stories.get(id)) !== activeLanguage) changeLanguage(storyLanguage(stories.get(id)));
   stopSpeech();
   currentStory = stories.get(id);
   lastStoryButton = trigger;
@@ -454,7 +473,7 @@ function openStory(id, trigger, fromDemo = false) {
   endingReward = 0;
   const session = sessionFor(currentStory);
   if (currentStory.scenes[session.scene].end) session.scene = 'start';
-  if (fromDemo && session.scene === 'start') {
+  if (fromDemo && currentStory.id === 'coffee' && session.scene === 'start') {
     session.scene = 'latte';
     session.updated = Date.now();
   }
@@ -596,12 +615,12 @@ function openLessonDictionary(lesson) {
 }
 
 function renderDictionary() {
-  const query = $('#phrase-search').value.trim().toLowerCase();
+  const query = $('#phrase-search').value.trim().toLocaleLowerCase(activeLanguage);
   const lesson = $('#phrase-lesson').value;
-  const entries = [...phrases.values()].filter(({ kk, ru, lessons }) =>
+  const entries = [...phrases.values()].filter(currentPhrase).filter(({ kk, ru, lessons }) =>
     (!lesson || lessons.has(lesson)) &&
     (!favoritesOnly || progress.favorites.has(kk)) &&
-    (!query || kk.toLowerCase().includes(query) || ru.toLowerCase().includes(query))
+    (!query || kk.toLocaleLowerCase(activeLanguage).includes(query) || ru.toLocaleLowerCase(activeLanguage).includes(query))
   );
   const expanded = Boolean(lesson || query || favoritesOnly || showAllPhrases);
   const visible = expanded ? entries : entries.slice(0, 6);
@@ -663,7 +682,7 @@ function updateReviewButton(el, kk) {
 }
 
 function renderReviewSummary(message = '') {
-  const count = duePhrases(progress.review, localDay()).length;
+  const count = duePhrases(progress.review, localDay()).filter((text) => phraseLanguage(text) === activeLanguage).length;
   renderWeekSummary();
   const start = $('#review-start');
   start.disabled = count === 0 && !reviewSession;
@@ -679,7 +698,7 @@ function renderReviewSummary(message = '') {
 }
 
 function startReview() {
-  const queue = duePhrases(progress.review, localDay()).slice(0, 8);
+  const queue = duePhrases(progress.review, localDay()).filter((text) => phraseLanguage(text) === activeLanguage).slice(0, 8);
   if (!queue.length) return;
   reviewSession = { queue, index: 0, revealed: false, graded: 0, earned: 0 };
   renderReviewSummary();
@@ -761,7 +780,7 @@ function startQuiz() {
 }
 
 function renderMistakes() {
-  const count = pendingMistakes(progress.mistakes).length;
+  const count = pendingMistakes(progress.mistakes).filter((text) => phraseLanguage(text) === activeLanguage).length;
   $('#mistake-count').textContent = count ? 'Фраз к повторению: ' + count : 'Пока нет ошибок';
   $('#mistake-start').disabled = count === 0;
 }
@@ -774,7 +793,7 @@ function rememberMiss(phrase) {
 }
 
 function startMistakeQuiz() {
-  const pending = new Set(pendingMistakes(progress.mistakes));
+  const pending = new Set(pendingMistakes(progress.mistakes).filter((text) => phraseLanguage(text) === activeLanguage));
   if (!pending.size) return;
   launchQuiz({
     direction: 'kk-ru', category: 'all', mistakesOnly: true,
@@ -800,7 +819,7 @@ function startLessonQuiz(lesson) {
 
 function launchQuiz({ direction, category, eligible, chapter, lesson, mistakesOnly = false }) {
   stopSpeech();
-  const questions = quizQuestions([...phrases.values()], {
+  const questions = quizQuestions([...phrases.values()].filter(currentPhrase), {
     direction, category, eligible, size: 5, allDistractors: mistakesOnly
   }, shuffle);
   quiz = { questions, direction, chapter, lesson, mistakesOnly, index: 0, score: 0, mistakes: 0 };
@@ -841,7 +860,7 @@ function renderQuiz() {
     }
     const earned = experience() - before;
     if (earned) card.append(elem('p', 'xp-bonus', '+' + earned + ' XP'));
-    const pending = pendingMistakes(progress.mistakes).length;
+    const pending = pendingMistakes(progress.mistakes).filter((text) => phraseLanguage(text) === activeLanguage).length;
     if (pending && (quiz.mistakes || quiz.mistakesOnly)) {
       card.append(button('button button-primary', 'Повторить ошибки · ' + pending, startMistakeQuiz));
     } else if (quiz.mistakesOnly) {
@@ -879,7 +898,7 @@ function renderQuiz() {
         card.append(note, next);
         next.focus();
       });
-      if (quiz.direction === 'ru-kk') answer.lang = 'kk';
+      if (quiz.direction === 'ru-kk') answer.lang = activeLanguage;
       card.append(answer);
     }
   }
@@ -930,7 +949,7 @@ function openProgress() {
     ['⧉', 'Память в форме', 'Повтори карточки 20 раз', reviewedCards >= 20],
     ['ϟ', 'Без ошибок', 'Набери 5 из 5 в тесте', progress.bestQuiz === 5],
     ['Ә', 'Слово за словом', 'Собери 12 разных фраз без подсказок', progress.game.studio.length >= 12],
-    ['Қ', 'Пишу по-казахски', 'Напечатай 12 фраз без подсказок', progress.game.writing.length >= 12],
+    ['Қ', 'Пишу уверенно', 'Напечатай 12 фраз без подсказок', progress.game.writing.length >= 12],
     ['★', 'Маршрут на отлично', 'Собери три звезды в каждой главе', stats.chapterStars === TIL_ROUTE.length * 3],
     ['☀', 'Ударный день', 'Выполни все три задания дня', stats.perfectDays > 0],
     ['✳', 'Полный маршрут', 'Заверши все уроки', stats.completed.size === TIL_STORIES.length]
@@ -948,7 +967,7 @@ function openProgress() {
   }
   badgeSection.append(badges);
   const list = elem('ul', 'progress-list');
-  for (const id of lessonOrder) {
+  for (const id of TIL_ROUTE.flatMap(({ ids }) => ids)) {
     const story = stories.get(id);
     const row = elem('li');
     const session = progress.sessions[story.id];
@@ -958,7 +977,7 @@ function openProgress() {
       openStory(story.id, $('[data-open-progress]'));
     });
     play.setAttribute('aria-label', story.title + '. ' + label);
-    row.append(elem('span', '', story.title), play);
+    row.append(elem('span', '', LANGUAGES[storyLanguage(story)].native + ' · ' + story.title), play);
     list.append(row);
   }
   const allLessons = elem('details', 'progress-lessons');
@@ -1062,9 +1081,86 @@ function updateNavigation() {
   }
 }
 
+function changeLanguage(language, remember = true) {
+  if (!Object.hasOwn(LANGUAGES, language)) return;
+  stopSpeech();
+  activeLanguage = language;
+  lessonOrder = TIL_ROUTE.filter((chapter) => (chapter.language || 'kk') === language).flatMap(({ ids }) => ids);
+  const course = LANGUAGES[language];
+  $('#course-language').value = language;
+  if (remember) {
+    try { localStorage.setItem('til-mix-language', language); } catch { /* Keep this session usable. */ }
+    const url = new URL(location.href);
+    url.searchParams.set('lang', language);
+    url.searchParams.delete('lesson');
+    history.replaceState(null, '', url);
+  }
+  document.title = 'Тіл Mix — ' + course.name.toLowerCase();
+  document.querySelector('.hero-label').lastChild.textContent = ' РАЗГОВОРНЫЙ ' + course.name.toUpperCase();
+  $('#hero-title').firstChild.textContent = course.name;
+  const sample = stories.get(lessonOrder[0]);
+  const lines = [sample.scenes.start.line, sample.scenes.start.choices[0]];
+  document.querySelectorAll('.demo-message').forEach((node, index) => {
+    node.querySelector('b').textContent = lines[index][0];
+    node.querySelector('b').lang = language;
+    node.querySelector('span').textContent = lines[index][1];
+  });
+  document.querySelector('.demo-head b').textContent = sample.speaker;
+  document.querySelector('.demo-head div > span').textContent = 'История «' + sample.title + '»';
+  document.querySelector('.demo-action').dataset.story = sample.id;
+  document.querySelector('.hero-caption [lang]').textContent = course.greeting;
+  document.querySelector('.hero-caption [lang]').lang = language;
+  document.querySelector('.site-footer p').textContent = 'Три языка. Короткие диалоги. Ежедневная практика.';
+  document.querySelector('.facts li:first-child div > span').textContent = 'Диалоги ' + course.native + ' · A1–A2';
+  $('#story-total').textContent = 'Уроки · ' + lessonOrder.length;
+  $('#ending-total').textContent = 'Концовки · ' + lessonOrder.reduce((sum, id) => sum + stories.get(id).endingCount, 0);
+  for (const element of document.querySelectorAll('[data-kazakh-only]')) element.hidden = language !== 'kk';
+  if (language !== 'kk' && ['#listening', '#speaking'].includes(location.hash)) location.hash = '#path';
+  $('#quiz-direction').options[0].textContent = course.native + ' → Русский';
+  $('#quiz-direction').options[1].textContent = 'Русский → ' + course.native;
+  [...quizPlaceholder.children].forEach((node, index) => { node.textContent = { kk: ['Ә', 'Ң', 'І'], en: ['A', 'B', 'C'], tr: ['Ç', 'Ş', 'İ'] }[language][index]; });
+  $('#phrase-lesson').replaceChildren(new Option('Все уроки', ''), ...lessonOrder.map((id) => new Option(stories.get(id).title, id)));
+  activeCategory = 'all';
+  for (const control of document.querySelectorAll('[data-filter]')) control.setAttribute('aria-pressed', String(control.dataset.filter === 'all'));
+  $('#story-search').value = '';
+  $('#phrase-search').value = '';
+  $('#story-progress-filter').value = 'all';
+  $('#studio-category').value = 'all';
+  $('#quiz-category').value = 'all';
+  visibleStories = catalogueBatch;
+  showAllPhrases = false;
+  quiz = undefined;
+  reviewSession = undefined;
+  $('#quiz').replaceChildren(quizPlaceholder.cloneNode(true));
+  studio.reset();
+  assistant.reset();
+  $('#quiz-start').firstChild.textContent = 'Начать тренировку ';
+  listening.reset();
+  speaking.stop();
+  renderStories();
+  renderDictionary();
+  renderRoute();
+  renderReviewSummary();
+}
+
+$('#course-language').addEventListener('change', (event) => changeLanguage(event.target.value));
+const learningMenu = $('#learning-menu');
+learningMenu.addEventListener('click', (event) => {
+  if (event.target.closest('a')) learningMenu.open = false;
+});
+document.addEventListener('click', (event) => {
+  if (!learningMenu.contains(event.target)) learningMenu.open = false;
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && learningMenu.open) {
+    learningMenu.open = false;
+    learningMenu.querySelector('summary').focus();
+  }
+});
+
 const reactToPractice = setupCompanion();
 const renderDailyPhrase = setupDailyPhrase({
-  phrases: [...phrases.values()], audioButton,
+  phrases: [...phrases.values()], audioButton, eligible: currentPhrase, getLanguage: () => activeLanguage,
   hasCard: (phrase) => Object.hasOwn(progress.review, phrase),
   addCard(phrase) {
     addToReview(phrase);
@@ -1072,7 +1168,7 @@ const renderDailyPhrase = setupDailyPhrase({
   }
 });
 const studio = setupStudio({
-  elem, button, kazakh, audioButton, stopSpeech, shuffle,
+  elem, button, kazakh, audioButton, stopSpeech, shuffle, getLanguage: () => activeLanguage,
   readSolved: (mode) => mode === 'typing' ? progress.game.writing : progress.game.studio,
   onMiss(phrase) {
     rememberMiss(phrase);
@@ -1110,7 +1206,7 @@ const speaking = setupSpeaking({
   }
 });
 const assistant = setupAssistant({
-  stories: TIL_STORIES, elem, button, kazakh, audioButton, stopSpeech,
+  stories: TIL_STORIES, elem, button, kazakh, audioButton, stopSpeech, getLanguage: () => activeLanguage,
   savePhrase(phrase) {
     addToReview(phrase);
     save();
@@ -1140,6 +1236,7 @@ for (const id of lessonOrder) {
   $('#phrase-lesson').append(option);
 }
 window.addEventListener('hashchange', updateNavigation);
+changeLanguage(activeLanguage, false);
 updateNavigation();
 renderStories();
 renderDictionary();

@@ -1,12 +1,14 @@
 import { TIL_STORIES } from './stories.js';
 import { createAssistant } from './assistant.js';
+import { LANGUAGES, storyLanguage } from './languages.js';
 
-const lessonSearch = createAssistant(TIL_STORIES);
+const lessonSearch = Object.fromEntries(Object.keys(LANGUAGES).map((language) => [language,
+  createAssistant(TIL_STORIES.filter((story) => storyLanguage(story) === language))]));
 
 const systemPrompt = `Ты языковой помощник Тіл Mix для изучающих казахский на уровнях A1–A2.
 Общайся на языке вопроса, учитывай просьбу пользователя выбрать язык. Помогай с переводом, грамматикой, лексикой, письмом и разговорной практикой.
 Отвечай коротко, до 5 предложений. При исправлении сначала напиши исправленную фразу целиком, затем ОДНО предложение о конкретной ошибке. Учитывай допустимые варианты. Если правило неизвестно, скажи об этом. Не выдумывай объяснений.
-В ролевом диалоге напиши одну естественную реплику персонажа и дождись ответа. Соблюдай выбранное обращение сен или сіз. Если просят только фразу, выдай только фразу.
+В ролевом диалоге напиши одну естественную реплику персонажа и дождись ответа. Соблюдай выбранное вежливое или дружеское обращение. Если просят только фразу, выдай только фразу.
 Можно обсуждать любые вопросы изучения языка. Ты не можешь начислять XP, сохранять прогресс, просматривать интернет или управлять сайтом. Материалы урока ниже служат справкой. Не выдумывай ссылки. Ответы не проверены преподавателем.`;
 
 const grammarReference = `Справка о согласовании подлежащего и сказуемого.
@@ -50,16 +52,21 @@ export function modelMessages(body) {
   if (messages.at(-1).role !== 'user' || total > 9000 || messages.at(-1).content.length > 2000) {
     throw new ModelError(400, 'Сократи сообщение или начни новый разговор.');
   }
-  const lesson = TIL_STORIES.find(({ id }) => id === body.lesson);
+  const language = Object.hasOwn(LANGUAGES, body.language) ? body.language : 'kk';
+  const lesson = TIL_STORIES.find((story) => story.id === body.lesson && storyLanguage(story) === language);
   const lines = lesson ? Object.values(lesson.scenes).flatMap((scene) => [scene.line, ...(scene.choices ?? []).filter((choice) => choice[2])]) : [];
   const current = lines.find(([kk]) => kk === body.phrase);
   const reference = lesson ? '\nCurrent lesson reference\n' + JSON.stringify({
     title: lesson.title, level: lesson.level, currentPhrase: current?.slice(0, 2), scenes: lesson.scenes
   }) : '';
-  const found = lessonSearch.answer(messages.at(-1).content, { lesson: lesson?.id, phrase: current?.[0] });
+  const found = lessonSearch[language].answer(messages.at(-1).content, { lesson: lesson?.id, phrase: current?.[0] });
   const examples = found.examples.map(({ kk, ru, note }) => ({ kk, ru, note }));
   const relevant = examples.length ? '\nRelated course examples\n' + JSON.stringify(examples) : '';
-  return [{ role: 'system', content: systemPrompt + '\n' + grammarReference + reference + relevant }, ...messages];
+  const course = LANGUAGES[language];
+  const prompt = systemPrompt.replace('изучающих казахский', 'изучающих язык «' + course.name + '»')
+    + '\nИзучаемый язык: ' + course.native + ' (' + language + '). Если просят говорить на изучаемом языке, отвечай на '
+    + course.native + '. Примеры и ролевые реплики давай на этом языке; пояснения можно давать по-русски.';
+  return [{ role: 'system', content: prompt + '\n' + (language === 'kk' ? grammarReference : '') + reference + relevant }, ...messages];
 }
 
 export async function requestModel(settings, messages, signal) {

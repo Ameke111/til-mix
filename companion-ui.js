@@ -121,7 +121,7 @@ function setupFoxMovement(control, reducedMotion) {
   schedule(10000 + Math.random() * 7000);
 }
 
-export function setupDailyPhrase({ phrases, audioButton, hasCard, addCard }) {
+export function setupDailyPhrase({ phrases, audioButton, hasCard, addCard, eligible = () => true, getLanguage = () => 'kk' }) {
   const kk = document.querySelector('#daily-phrase-kk');
   const ru = document.querySelector('#daily-phrase-ru');
   const actions = document.querySelector('#daily-phrase-actions');
@@ -137,11 +137,13 @@ export function setupDailyPhrase({ phrases, audioButton, hasCard, addCard }) {
     status.textContent = 'Фраза дня добавлена в карточки.';
   });
   return (day) => {
-    const phrase = dailyPhrases[day % dailyPhrases.length];
+    const available = dailyPhrases.filter(eligible);
+    const phrase = available[day % available.length];
     if (!phrase) return;
     if (phrase !== current) {
       current = phrase;
       kk.textContent = phrase.kk;
+      kk.lang = getLanguage();
       ru.textContent = phrase.ru;
       actions.replaceChildren(audioButton(phrase.kk), save);
     }
